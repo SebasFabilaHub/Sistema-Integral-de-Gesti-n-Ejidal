@@ -1,0 +1,1781 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SIGE Pro - Sistema Integral de Gestión Ejidal</title>
+
+  <!-- Tailwind CSS & Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet GIS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; }
+    .leaflet-container { font-family: 'Inter', sans-serif; }
+
+    /* ====== Paleta heráldica institucional ====== */
+    .bg-gov-dark { background-color: #13322B; }
+    .bg-gov-gold { background-color: #98224E; }
+    .text-gov-gold { color: #98224E; }
+    .text-gov-dark { color: #13322B; }
+    .border-gov-gold { border-color: #98224E; }
+    .ring-gov-gold { --tw-ring-color: #98224E; }
+    .bg-gov-grad { background: linear-gradient(135deg, #0f2a23 0%, #13322B 45%, #1f4e43 100%); }
+    .text-grad-emerald {
+      background: linear-gradient(120deg, #13322B 0%, #0f766e 60%, #98224E 130%);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    #admin-map { height: 480px; border-radius: 16px; z-index: 1; }
+    #yuumil-map { height: 260px; border-radius: 20px; z-index: 1; }
+
+    /* ====== Micro-interacciones premium ====== */
+    .hover-lift { transition: transform .28s cubic-bezier(.16,1,.3,1), box-shadow .28s ease, border-color .28s ease; }
+    .hover-lift:hover { transform: translateY(-5px); box-shadow: 0 22px 45px -18px rgba(15,42,35,0.35); }
+    .btn-press { transition: transform .18s cubic-bezier(.16,1,.3,1), box-shadow .25s ease, background-color .25s ease; }
+    .btn-press:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -10px rgba(19,50,43,0.5); }
+    .btn-press:active { transform: translateY(0) scale(.97); }
+
+    /* ====== Reveal on scroll ====== */
+    .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s cubic-bezier(.16,1,.3,1); }
+    .reveal.is-visible { opacity: 1; transform: none; }
+
+    /* ====== Hero ornamentación ====== */
+    .hero-glow { background:
+        radial-gradient(60% 60% at 18% 12%, rgba(16,118,110,0.10) 0%, transparent 60%),
+        radial-gradient(50% 50% at 88% 8%, rgba(152,34,78,0.08) 0%, transparent 55%),
+        radial-gradient(70% 60% at 50% 110%, rgba(19,50,43,0.06) 0%, transparent 60%); }
+    .grid-paper { background-image:
+        linear-gradient(rgba(15,42,35,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15,42,35,0.035) 1px, transparent 1px);
+      background-size: 38px 38px; }
+
+    /* Placeholders de fotografía de campo */
+    .field-img-1 { background: linear-gradient(160deg,#1f4e43 0%, #0f2a23 100%); }
+    .field-img-2 { background: linear-gradient(160deg,#3f5a2e 0%, #14321f 100%); }
+    .field-img-3 { background: linear-gradient(160deg,#5a7d2e 0%, #1f3a14 100%); }
+
+    /* ====== Toast Push WhatsApp ====== */
+    #wa-toast-stack { position: fixed; top: 1rem; right: 1rem; z-index: 90; display: flex; flex-direction: column; gap: .6rem; width: min(92vw, 360px); pointer-events: none; }
+    .wa-toast { pointer-events: auto; animation: waIn .5s cubic-bezier(.16,1,.3,1); }
+    .wa-toast.wa-out { animation: waOut .4s ease forwards; }
+    @keyframes waIn { from { opacity:0; transform: translateX(48px) scale(.94); } to { opacity:1; transform: translateX(0) scale(1); } }
+    @keyframes waOut { to { opacity:0; transform: translateX(48px) scale(.94); } }
+
+    .fade-up { animation: fadeUp .6s ease both; }
+    @keyframes fadeUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform:none; } }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #F1F5F9; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+  </style>
+</head>
+<body class="overflow-x-hidden text-slate-900 bg-slate-50 antialiased selection:bg-emerald-600 selection:text-white">
+
+  <!-- ================================================================= -->
+  <!-- 1. PORTAL PÚBLICO: LANDING PAGE INSTITUCIONAL                    -->
+  <!-- ================================================================= -->
+  <div id="section-landing" class="block min-h-screen flex flex-col justify-between bg-slate-50">
+
+    <!-- Navbar Institucional -->
+    <header class="bg-white/90 backdrop-blur-md border-b border-slate-200/70 px-4 sm:px-8 py-3.5 flex justify-between items-center sticky top-0 z-40 shadow-sm">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gov-grad flex items-center justify-center text-xl shadow-md ring-1 ring-white/10">🌾</div>
+        <div>
+          <h1 class="font-black text-xl tracking-tight text-slate-900 leading-none">SIGE <span class="text-gov-gold">Yuumil</span></h1>
+          <span class="text-[10px] font-bold tracking-[0.18em] text-emerald-700 uppercase">Gestión Inteligente de Ejidos</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="openAccessModal()" class="hidden sm:inline-flex bg-white border border-slate-200 text-slate-700 hover:border-gov-gold hover:text-gov-gold font-bold text-sm px-4 py-2.5 rounded-xl btn-press">
+          Solicitar acceso
+        </button>
+        <button onclick="openLoginModal()" class="bg-gov-grad text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl btn-press shadow-md min-h-[42px]">
+          Iniciar sesión
+        </button>
+      </div>
+    </header>
+
+    <!-- Hero Section Expansiva -->
+    <section class="relative overflow-hidden flex-1 flex flex-col justify-center">
+      <div class="absolute inset-0 hero-glow"></div>
+      <div class="absolute inset-0 grid-paper opacity-70"></div>
+      <div class="relative max-w-5xl mx-auto px-4 py-16 sm:py-28 text-center space-y-7 flex flex-col items-center">
+        <span class="inline-flex items-center gap-2 bg-white border border-slate-200/80 text-emerald-800 text-[11px] sm:text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-[0.14em] shadow-sm">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          Plataforma GIS · Homologada ante el RAN
+        </span>
+        <h2 class="text-4xl sm:text-6xl font-black tracking-tight leading-[1.02] max-w-4xl text-slate-900">
+          SIGE <span class="text-grad-emerald">Yuumil</span>
+        </h2>
+        <p class="text-gov-gold text-lg sm:text-2xl font-semibold tracking-tight max-w-2xl">
+          Tecnología para la gestión inteligente de ejidos
+        </p>
+        <p class="text-slate-600 text-base sm:text-lg max-w-2xl leading-relaxed">
+          Plataforma unificada para el control territorial, la trazabilidad legal de derechos sucesorios y la integración de telemetría agrícola para los núcleos agrarios de México.
+        </p>
+        <div class="pt-3 flex flex-col sm:flex-row justify-center gap-3 w-full sm:w-auto">
+          <button onclick="openLoginModal()" class="bg-gov-grad text-white font-bold px-7 py-3.5 rounded-2xl text-sm btn-press shadow-lg w-full sm:w-auto">
+            Iniciar sesión →
+          </button>
+          <button onclick="openAccessModal()" class="bg-white border border-slate-200 text-slate-700 hover:border-gov-gold hover:text-gov-gold font-bold px-7 py-3.5 rounded-2xl text-sm btn-press shadow-sm w-full sm:w-auto">
+            Solicitar acceso
+          </button>
+        </div>
+        <div class="pt-8 grid grid-cols-3 gap-3 sm:gap-8 max-w-2xl w-full">
+          <div class="text-center">
+            <p class="text-2xl sm:text-3xl font-black text-slate-900">106</p>
+            <p class="text-[10px] sm:text-xs text-slate-500 font-semibold uppercase tracking-wide">Municipios Yucatán</p>
+          </div>
+          <div class="text-center border-x border-slate-200/70">
+            <p class="text-2xl sm:text-3xl font-black text-slate-900">198.95<span class="text-sm"> ha</span></p>
+            <p class="text-[10px] sm:text-xs text-slate-500 font-semibold uppercase tracking-wide">Superficie GIS</p>
+          </div>
+          <div class="text-center">
+            <p class="text-2xl sm:text-3xl font-black text-slate-900">100%</p>
+            <p class="text-[10px] sm:text-xs text-slate-500 font-semibold uppercase tracking-wide">Certeza Jurídica</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ¿Qué es SIGE Yuumil? -->
+    <section class="bg-white border-t border-slate-200/60 py-16 sm:py-24 px-4">
+      <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-5 gap-10 md:gap-12 items-center reveal">
+        <div class="md:col-span-3 space-y-5">
+          <span class="text-xs font-bold text-emerald-700 uppercase tracking-[0.16em]">Ecosistema institucional</span>
+          <h3 class="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">¿Qué es SIGE Yuumil?</h3>
+          <p class="text-slate-600 text-base leading-relaxed">
+            Es un ecosistema tecnológico integral diseñado para modernizar la administración de los ejidos mexicanos. Interconecta las decisiones del Comisariado Ejidal con las necesidades del ejidatario en campo de forma transparente, rápida y segura.
+          </p>
+          <p class="text-slate-600 text-base leading-relaxed">
+            Garantiza la certeza jurídica de la propiedad social mediante herramientas avanzadas de mapeo georreferenciado y un expediente digital trazable de extremo a extremo.
+          </p>
+        </div>
+        <div class="md:col-span-2">
+          <div class="bg-slate-100 p-2 rounded-2xl border border-slate-200/60 shadow-sm hover-lift">
+            <div class="rounded-xl border-2 border-dashed border-gov-gold/40 bg-white p-7 text-center space-y-3">
+              <div class="w-14 h-14 mx-auto rounded-2xl bg-gov-grad flex items-center justify-center text-2xl shadow-inner">⚖️</div>
+              <p class="font-black text-gov-dark text-sm uppercase tracking-wide">Homologación Gubernamental</p>
+              <p class="text-xs text-slate-500 leading-relaxed">
+                Módulos adaptados a la Ley Agraria y a los lineamientos del Registro Agrario Nacional (RAN).
+              </p>
+              <div class="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Sello de validez RAN
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ¿Qué hace el sistema? -->
+    <section class="bg-slate-50 py-16 sm:py-24 px-4">
+      <div class="max-w-6xl mx-auto space-y-12">
+        <div class="text-center space-y-3 reveal">
+          <span class="text-xs font-bold text-emerald-700 uppercase tracking-[0.16em]">Capacidades operativas</span>
+          <h3 class="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">¿Qué hace el sistema?</h3>
+          <p class="text-slate-500 max-w-2xl mx-auto text-base leading-relaxed">Cuatro módulos integrados que cubren el ciclo completo de la gestión agraria comunal.</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm space-y-3 hover-lift reveal">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-2xl">🗺️</div>
+            <h4 class="font-black text-base text-slate-900">Gestión de parcelas</h4>
+            <p class="text-sm text-slate-500 leading-relaxed">Mapeo satelital y vectorial de linderos mediante capas GIS interactivas.</p>
+          </div>
+          <div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm space-y-3 hover-lift reveal">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-2xl">📄</div>
+            <h4 class="font-black text-base text-slate-900">Documentación legal</h4>
+            <p class="text-sm text-slate-500 leading-relaxed">Resguardo digital de certificados parcelarios y actas de asamblea.</p>
+          </div>
+          <div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm space-y-3 hover-lift reveal">
+            <div class="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-2xl">👥</div>
+            <h4 class="font-black text-base text-slate-900">Seguimiento</h4>
+            <p class="text-sm text-slate-500 leading-relaxed">Control demográfico del padrón oficial y de los árboles genealógicos sucesorios.</p>
+          </div>
+          <div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm space-y-3 hover-lift reveal">
+            <div class="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-2xl">⚖️</div>
+            <h4 class="font-black text-base text-slate-900">Transparencia</h4>
+            <p class="text-sm text-slate-500 leading-relaxed">Acceso abierto al estado de los trámites, eliminando asimetrías de información.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Beneficios Directos -->
+    <section class="bg-white border-t border-slate-200/60 py-16 sm:py-24 px-4">
+      <div class="max-w-5xl mx-auto space-y-12">
+        <div class="text-center space-y-3 reveal">
+          <span class="text-xs font-bold text-emerald-700 uppercase tracking-[0.16em]">Impacto en campo</span>
+          <h3 class="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Beneficios Directos</h3>
+          <p class="text-slate-500 max-w-2xl mx-auto text-base leading-relaxed">Cómo el sistema resuelve los problemas agrarios reales de los núcleos ejidales.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200/60 shadow-sm flex items-start gap-4 hover-lift reveal">
+            <span class="shrink-0 w-3 h-3 mt-1.5 rounded-full bg-rose-500 shadow-[0_0_0_4px_rgba(244,63,94,0.15)]"></span>
+            <div>
+              <h4 class="font-black text-slate-900 text-base">Evita problemas legales</h4>
+              <p class="text-sm text-slate-500 mt-1 leading-relaxed">Control estricto de listas de sucesión y prelación para prevenir litigios hereditarios agrarios.</p>
+            </div>
+          </div>
+          <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200/60 shadow-sm flex items-start gap-4 hover-lift reveal">
+            <span class="shrink-0 w-3 h-3 mt-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]"></span>
+            <div>
+              <h4 class="font-black text-slate-900 text-base">Acceso inmediato a documentos</h4>
+              <p class="text-sm text-slate-500 mt-1 leading-relaxed">Expedientes digitales disponibles 24/7 desde cualquier celular o tableta del ejidatario.</p>
+            </div>
+          </div>
+          <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200/60 shadow-sm flex items-start gap-4 hover-lift reveal">
+            <span class="shrink-0 w-3 h-3 mt-1.5 rounded-full bg-amber-500 shadow-[0_0_0_4px_rgba(245,158,11,0.15)]"></span>
+            <div>
+              <h4 class="font-black text-slate-900 text-base">Control centralizado</h4>
+              <p class="text-sm text-slate-500 mt-1 leading-relaxed">Un solo backoffice consolida padrón, parcelas y telemetría de los 106 municipios.</p>
+            </div>
+          </div>
+          <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200/60 shadow-sm flex items-start gap-4 hover-lift reveal">
+            <span class="shrink-0 w-3 h-3 mt-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]"></span>
+            <div>
+              <h4 class="font-black text-slate-900 text-base">Ahorro masivo de tiempo</h4>
+              <p class="text-sm text-slate-500 mt-1 leading-relaxed">Dictaminación digital y notificaciones omnicanal reducen meses de trámite a minutos.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Infraestructura Visual en Campo -->
+    <section class="bg-slate-50 py-16 sm:py-24 px-4">
+      <div class="max-w-6xl mx-auto space-y-12">
+        <div class="text-center space-y-3 reveal">
+          <span class="text-xs font-bold text-emerald-700 uppercase tracking-[0.16em]">Operación territorial</span>
+          <h3 class="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Infraestructura Visual en Campo</h3>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div class="relative group h-64 rounded-2xl overflow-hidden border border-slate-200/60 shadow-sm field-img-1 hover-lift reveal flex items-end">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10"></div>
+            <div class="absolute top-4 left-4 z-20 text-3xl opacity-80">👨‍🌾</div>
+            <div class="relative z-20 p-5 space-y-1">
+              <p class="text-[10px] font-bold text-emerald-300 uppercase tracking-widest">Asamblea comunal</p>
+              <p class="text-white font-black text-base leading-tight">Ejidatarios en Yucatán</p>
+              <p class="text-white/70 text-xs">San José Tzal · Mérida</p>
+            </div>
+          </div>
+          <div class="relative group h-64 rounded-2xl overflow-hidden border border-slate-200/60 shadow-sm field-img-2 hover-lift reveal flex items-end">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10"></div>
+            <div class="absolute top-4 left-4 z-20 text-3xl opacity-80">📡</div>
+            <div class="relative z-20 p-5 space-y-1">
+              <p class="text-[10px] font-bold text-emerald-300 uppercase tracking-widest">Geomática</p>
+              <p class="text-white font-black text-base leading-tight">Trabajo en campo</p>
+              <p class="text-white/70 text-xs">Levantamientos GPS de precisión</p>
+            </div>
+          </div>
+          <div class="relative group h-64 rounded-2xl overflow-hidden border border-slate-200/60 shadow-sm field-img-3 hover-lift reveal flex items-end">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10"></div>
+            <div class="absolute top-4 left-4 z-20 text-3xl opacity-80">🌽</div>
+            <div class="relative z-20 p-5 space-y-1">
+              <p class="text-[10px] font-bold text-emerald-300 uppercase tracking-widest">AgriTech</p>
+              <p class="text-white font-black text-base leading-tight">Parcelas agrícolas</p>
+              <p class="text-white/70 text-xs">Monitoreo IoT en la milpa</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Flujo de Operatividad -->
+    <section class="bg-white border-t border-slate-200/60 py-16 sm:py-24 px-4">
+      <div class="max-w-5xl mx-auto space-y-14">
+        <div class="text-center space-y-3 reveal">
+          <span class="text-xs font-bold text-emerald-700 uppercase tracking-[0.16em]">Implementación</span>
+          <h3 class="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Flujo de Operatividad</h3>
+        </div>
+        <div class="relative grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6">
+          <div class="hidden md:block absolute top-7 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-emerald-200 via-emerald-300 to-emerald-200"></div>
+          <div class="relative text-center space-y-3 reveal">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-gov-grad text-white flex items-center justify-center text-xl font-black shadow-lg ring-4 ring-white">1</div>
+            <h4 class="font-black text-slate-900 text-lg">Registro</h4>
+            <p class="text-sm text-slate-500 leading-relaxed max-w-xs mx-auto">Alta del núcleo agrario y validación del padrón de ejidatarios ante RENAPO y el RAN.</p>
+          </div>
+          <div class="relative text-center space-y-3 reveal">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-gov-grad text-white flex items-center justify-center text-xl font-black shadow-lg ring-4 ring-white">2</div>
+            <h4 class="font-black text-slate-900 text-lg">Carga de datos</h4>
+            <p class="text-sm text-slate-500 leading-relaxed max-w-xs mx-auto">Digitalización de expedientes, levantamiento GIS de parcelas y conexión de sensores IoT.</p>
+          </div>
+          <div class="relative text-center space-y-3 reveal">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-gov-grad text-white flex items-center justify-center text-xl font-black shadow-lg ring-4 ring-white">3</div>
+            <h4 class="font-black text-slate-900 text-lg">Gestión digital</h4>
+            <p class="text-sm text-slate-500 leading-relaxed max-w-xs mx-auto">Dictaminación, sucesiones y trazabilidad legal operando en tiempo real entre comisariado y ejidatario.</p>
+          </div>
+        </div>
+        <div class="text-center reveal">
+          <button onclick="openLoginModal()" class="bg-gov-grad text-white font-bold px-8 py-3.5 rounded-2xl text-sm btn-press shadow-lg">
+            Comenzar ahora →
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer Corporativo -->
+    <footer class="bg-gov-dark text-slate-400 pt-14 pb-8 px-4 text-xs shrink-0">
+      <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 border-b border-white/10 pb-10 mb-6">
+        <div class="space-y-3 md:col-span-1">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-lg">🌾</div>
+            <div>
+              <p class="font-black text-white text-base leading-none">SIGE Yuumil</p>
+              <span class="text-[10px] text-emerald-300/80 font-bold tracking-wider uppercase">Sistema Integral de Gestión Ejidal</span>
+            </div>
+          </div>
+          <p class="text-slate-400/80 leading-relaxed">Tecnología para la gestión inteligente de ejidos y la certeza jurídica de la propiedad social en México.</p>
+        </div>
+        <div class="space-y-3">
+          <p class="font-bold text-white uppercase tracking-wider text-[11px]">Contacto</p>
+          <ul class="space-y-2 text-slate-400/80">
+            <li><a href="#" class="hover:text-emerald-300 transition">contacto@sige-yuumil.mx</a></li>
+            <li><a href="#" class="hover:text-emerald-300 transition">Delegación Yucatán · Mérida</a></li>
+            <li><a href="#" class="hover:text-emerald-300 transition">+52 999 000 0000</a></li>
+          </ul>
+        </div>
+        <div class="space-y-3">
+          <p class="font-bold text-white uppercase tracking-wider text-[11px]">Aviso de privacidad</p>
+          <ul class="space-y-2 text-slate-400/80">
+            <li><a href="#" class="hover:text-emerald-300 transition">Aviso de privacidad integral</a></li>
+            <li><a href="#" class="hover:text-emerald-300 transition">Términos y condiciones</a></li>
+            <li><a href="#" class="hover:text-emerald-300 transition">Protección de datos personales</a></li>
+          </ul>
+        </div>
+        <div class="space-y-3">
+          <p class="font-bold text-white uppercase tracking-wider text-[11px]">Enlaces gubernamentales</p>
+          <ul class="space-y-2 text-slate-400/80">
+            <li><a href="#" class="hover:text-emerald-300 transition">Registro Agrario Nacional (RAN)</a></li>
+            <li><a href="#" class="hover:text-emerald-300 transition">Procuraduría Agraria</a></li>
+            <li><a href="#" class="hover:text-emerald-300 transition">Secretaría de Desarrollo Agrario</a></li>
+          </ul>
+        </div>
+      </div>
+      <p class="text-center text-[11px] text-slate-500/80 leading-relaxed max-w-3xl mx-auto">
+        © 2026 Plataforma SIGE Yuumil. Desarrollado bajo estándares federales de certeza jurídica agraria. Los datos mostrados corresponden a un entorno de demostración y no constituyen un registro oficial ante el RAN.
+      </p>
+    </footer>
+  </div>
+
+  <!-- MODAL DE ACCESO (LANDING) -->
+  <div id="modal-access" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm hidden opacity-0 transition-all duration-200 p-4">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+      <div class="p-4 bg-gov-dark text-white flex justify-between items-center">
+        <h3 class="font-bold text-xs uppercase tracking-wider">Solicitud de Registro Agrario</h3>
+        <button onclick="closeAccessModal()" class="text-white font-bold text-sm">&times;</button>
+      </div>
+      <div class="p-6 space-y-4 text-xs">
+        <input type="text" placeholder="Nombre completo" class="w-full bg-slate-50 border rounded-xl p-2.5 outline-none">
+        <input type="text" placeholder="CURP Oficial (18 Caracteres)" class="w-full bg-slate-50 border rounded-xl p-2.5 font-mono outline-none">
+        <button onclick="submitAccessRequest()" class="w-full bg-[#1A4D3B] text-white font-bold py-2.5 rounded-xl uppercase transition">Enviar a Validación RAN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE LOGIN CENTRAL -->
+  <div id="modal-login" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm hidden opacity-0 transition-all duration-200 p-4">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+      <div class="p-4 bg-gov-dark text-white flex justify-between items-center">
+        <h3 class="font-bold text-xs uppercase tracking-wider">Módulo de Autenticación</h3>
+        <button onclick="closeLoginModal()" class="text-white font-bold text-sm">&times;</button>
+      </div>
+      <form onsubmit="executeAuthLogin(event)" class="p-6 space-y-4 text-xs">
+        <div class="space-y-1">
+          <label class="font-bold text-slate-700 block">Rol del Usuario</label>
+          <select id="auth-role" class="w-full bg-slate-50 border rounded-xl p-2.5 font-bold text-slate-700 outline-none">
+            <option value="admin">🏛️ Comisariado Ejidal (Admin Backend)</option>
+            <option value="ejidatario">🌽 Ejidatario (App SIGE Yuumil)</option>
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="font-bold text-slate-700 block">CURP / Clave de Acceso</label>
+          <input type="text" id="auth-user" required placeholder="Ingresa tu CURP registrada" class="w-full bg-slate-50 border rounded-xl p-2.5 font-mono outline-none">
+        </div>
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-[11px] text-slate-500 leading-relaxed">
+          <p class="font-bold text-slate-700 uppercase mb-0.5">💡 Credenciales Demo:</p>
+          <p>• <b>Admin:</b> ingresa ADMIN con rol Admin para ingresar al backoffice corporativo.</p>
+          <p>• <b>Ejidatario:</b> Ingresa <b>DIONISIO</b> para simular la vista exclusiva de un ejidatario.</p>
+        </div>
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl uppercase transition shadow-md">
+          Validar Credenciales
+        </button>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ================================================================= -->
+  <!-- 2. CONSOLA PREMIUM BACKOFFICE: SIGE ADMIN                         -->
+  <!-- ================================================================= -->
+  <div id="section-admin" class="hidden h-screen w-screen overflow-hidden">
+    
+    <!-- Premium Corporate Sidebar -->
+    <aside class="w-72 bg-[#143F30] text-white p-6 hidden lg:flex flex-col justify-between shrink-0 shadow-2xl z-30">
+      <div>
+        <div class="flex items-center gap-3 pb-6 mb-6 border-b border-white/10">
+          <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-xl shadow-inner">🌽</div>
+          <div>
+            <h1 class="font-black text-lg tracking-tight leading-none">SIGE</h1>
+            <span class="text-[10px] text-emerald-300 font-bold tracking-wider uppercase">Sistema Integral de Gestión Ejidal</span>
+          </div>
+        </div>
+
+        <nav class="space-y-1" id="sidebar-nav">
+          <button class="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl bg-emerald-700 text-white font-medium transition shadow-sm">
+            <span class="text-lg">📊</span> <span>Dashboard General</span>
+          </button>
+          <button onclick="alert('Acceso al padrón consolidado de sucesiones.')" class="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-emerald-100/80 hover:bg-white/5 hover:text-white font-medium transition">
+            <span class="text-lg">👥</span> <span>Padrón y Familias</span>
+          </button>
+          <button onclick="alert('Consulta de expedientes validados ante el RAN.')" class="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-emerald-100/80 hover:bg-white/5 hover:text-white font-medium transition">
+            <span class="text-lg">📄</span> <span>Archivo Digital RAN</span>
+          </button>
+          <button onclick="alert('Red remota de telemetría de suelo activa.')" class="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-emerald-100/80 hover:bg-white/5 hover:text-white font-medium transition">
+            <span class="text-lg">🤖</span> <span>Telemetría IoT</span>
+          </button>
+        </nav>
+      </div>
+
+      <div class="space-y-4">
+        <div class="p-3 bg-white/5 rounded-xl border border-white/5 space-y-1.5">
+          <label class="text-[9px] font-bold text-emerald-300 uppercase tracking-widest block">Permisos del Sistema</label>
+          <select class="w-full bg-[#1A4D3B] border border-white/10 text-xs font-semibold rounded-lg p-1.5 text-white outline-none">
+            <option>Comisariado (Admin)</option>
+            <option>Ejidatario (Lectura)</option>
+          </select>
+        </div>
+
+        <div class="p-3.5 bg-black/20 rounded-xl text-xs text-emerald-200/70 border border-white/5">
+          <p class="font-semibold text-white mb-0.5">Delegación Yucatán</p>
+          <p>Núcleo: San José Tzal</p>
+          <div class="mt-2 flex items-center gap-1.5 text-emerald-400 font-bold text-[11px]">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Sistema Operativo
+          </div>
+        </div>
+        <button onclick="logOutSystem()" class="w-full bg-red-700/30 hover:bg-red-700 border border-red-500/20 text-white text-xs font-bold py-2 rounded-xl transition">
+          Cerrar Sesión Admin
+        </button>
+      </div>
+    </aside>
+
+    <!-- Admin Workspace window -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden">
+      <header class="bg-white border-b border-slate-200 px-8 py-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4 shrink-0 shadow-sm z-20">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-800 tracking-tight" data-i18n="Dashboard General">Dashboard General</h2>
+          <p class="text-xs text-slate-500 font-medium"><span data-i18n="Estado Legal de la Propiedad Social">Estado Legal de la Propiedad Social</span> · <span class="text-slate-700 font-semibold">Mérida, Yucatán</span></p>
+        </div>
+        
+        <div class="flex items-center gap-3">
+          <select id="lang-selector" class="bg-slate-100 border border-slate-200 text-xs font-bold rounded-xl px-3 py-2.5 text-slate-700 outline-none">
+            <option value="es">Castellano (ESP)</option>
+            <option value="my">Maaya T'aan (MAY)</option>
+          </select>
+          <button class="bg-emerald-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span> CONECTADO (ONLINE)
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Scrollable Area -->
+      <div class="flex-1 overflow-y-auto p-8 space-y-8 scroll-touch">
+
+        <!-- Notificación de Certeza Jurídica -->
+        <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-2xl shadow-sm flex items-start justify-between gap-3 border border-amber-100">
+          <div class="flex items-start gap-3">
+            <span class="text-xl">🔔</span>
+            <div>
+              <h4 class="text-xs font-bold text-amber-900 uppercase tracking-wide">Notificación de Certeza Jurídica</h4>
+              <p class="text-xs text-amber-700 mt-0.5">Próxima Asamblea de Delimitación y Asignación de Tierras convocada para el domingo a las 10:00 AM.</p>
+            </div>
+          </div>
+          <button onclick="this.parentElement.remove()" class="text-amber-900 font-bold text-sm hover:opacity-70">✕</button>
+        </div>
+
+        <!-- SaaS Indicator Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+            <div>
+              <p class="text-slate-400 text-xs font-bold uppercase tracking-wider" data-i18n="Padrón de Ejidatarios">Padrón de Ejidatarios</p>
+              <h3 id="admin-kpi-total" class="text-3xl font-bold text-slate-800 mt-1">15</h3>
+              <span class="text-[11px] text-emerald-600 font-semibold mt-1 inline-block" data-i18n="✓ Validados ante RENAPO">✓ Validados ante RENAPO</span>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">👥</div>
+          </div>
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+            <div>
+              <p class="text-slate-400 text-xs font-bold uppercase tracking-wider" data-i18n="Parcelas Cartografiadas">Parcelas Cartografiadas</p>
+              <h3 id="admin-kpi-plots" class="text-3xl font-bold text-slate-800 mt-1">10</h3>
+              <span class="text-[11px] text-slate-500 font-medium mt-1 inline-block" data-i18n="Polígonos vectoriales en caché">Polígonos vectoriales en caché</span>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">🗺️</div>
+          </div>
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+            <div>
+              <p class="text-slate-400 text-xs font-bold uppercase tracking-wider" data-i18n="Superficie Certificada">Superficie Certificada</p>
+              <h3 id="admin-kpi-surface" class="text-3xl font-bold text-slate-800 mt-1">198.95 <span class="text-sm font-medium text-slate-500">ha</span></h3>
+              <span class="text-[11px] text-indigo-600 font-semibold mt-1 inline-block" data-i18n="Proyección UTM Zona 16N">Proyección UTM Zona 16N</span>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl">📐</div>
+          </div>
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+            <div>
+              <p class="text-slate-400 text-xs font-bold uppercase tracking-wider" data-i18n="Rezago por Regularizar">Rezago por Regularizar</p>
+              <h3 id="admin-kpi-pendientes" class="text-3xl font-bold text-amber-600 mt-1">2</h3>
+              <span class="text-[11px] text-amber-600 font-semibold mt-1 inline-block" data-i18n="⚠️ Requieren título del RAN">⚠️ Requieren título del RAN</span>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">⚠️</div>
+          </div>
+        </div>
+
+        <!-- GIS Maps and Alerts -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 xl:col-span-2 flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+              <div>
+                <h3 class="text-base font-bold text-slate-800">Visor Catastral Social</h3>
+                <p class="text-xs text-slate-500">Haz clic en un polígono para auditar trazabilidad agraria y familiar</p>
+              </div>
+              <button onclick="recenterAdminMap()" class="bg-[#143F30] hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition">
+                🎯 Centrar Mapa Base
+              </button>
+            </div>
+            <div class="relative flex-1">
+              <div id="admin-map"></div>
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+            <div class="space-y-4">
+              <h3 class="text-base font-bold text-slate-800 border-b border-slate-100 pb-2">Alertas de Certeza Jurídica</h3>
+              <div class="space-y-3">
+                <div class="border-l-4 border-emerald-600 bg-emerald-50/50 p-3 rounded-r-xl">
+                  <p class="font-bold text-slate-800 text-xs">Asamblea Especial de Asignación</p>
+                  <p class="text-[11px] text-slate-500 mt-0.5">Domingo · 10:00 AM · Alta Prioridad</p>
+                </div>
+                <div class="border-l-4 border-red-500 bg-red-50/50 p-3 rounded-r-xl">
+                  <p class="font-bold text-slate-800 text-xs">⚠️ Expediente Precario Detectado</p>
+                  <p class="text-[11px] text-slate-500 mt-0.5">Monte Alto Sin Asignar no cuenta con clave única de catastro agrario.</p>
+                </div>
+              </div>
+            </div>
+            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-150 text-[11px] text-slate-500 leading-relaxed">
+              💡 <b>Nota de campo:</b> Las parcelas marcadas en rojo indican posesiones precarias sin carpeta técnica ingresada ante la delegación del RAN.
+            </div>
+          </div>
+        </div>
+
+        <!-- Validación Documental en Tiempo Real Conectada -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-4 bg-slate-50 border-b border-slate-200">
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider" data-i18n="Bandeja de Entrada: Validación de Carpetas Agrarias">Bandeja de Entrada: Validación de Carpetas Agrarias</h3>
+            <p class="text-[11px] text-slate-400 mt-0.5">Auditoría en tiempo real de los expedientes cargados por los ejidatarios desde la app Yuumil.</p>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-100/50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                  <th class="px-4 py-3">Ejidatario</th>
+                  <th class="px-4 py-3">Tipo de Documento</th>
+                  <th class="px-4 py-3">Archivo / Folio</th>
+                  <th class="px-4 py-3">Estado Actual</th>
+                  <th class="px-4 py-3 text-right">Acciones de Dictaminación</th>
+                </tr>
+              </thead>
+              <tbody id="admin-docs-table-body" class="divide-y divide-slate-100 text-slate-700">
+                <!-- Sincronizado Dinámicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Bandeja de Denuncias de Campo Conectada (Despojo / Invasión) -->
+        <div class="bg-white rounded-2xl border border-rose-200 shadow-sm overflow-hidden">
+          <div class="p-4 bg-rose-50 border-b border-rose-200 flex items-center justify-between gap-3">
+            <div>
+              <h3 class="text-xs font-bold text-rose-800 uppercase tracking-wider flex items-center gap-2" data-i18n="Bandeja de Denuncias de Campo Conectada">
+                <span class="text-base">🚨</span> Bandeja de Denuncias de Campo Conectada
+              </h3>
+              <p class="text-[11px] text-rose-500 mt-0.5">Alertas de despojo e invasión inmobiliaria empujadas en tiempo real desde la app del ejidatario.</p>
+            </div>
+            <span id="admin-denuncias-counter" class="shrink-0 bg-rose-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full">0</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-rose-100/40 border-b border-rose-200 text-rose-600 font-bold uppercase tracking-wider">
+                  <th class="px-4 py-3">Denunciante</th>
+                  <th class="px-4 py-3">Tipificación del Delito</th>
+                  <th class="px-4 py-3">Coordenadas Periciales</th>
+                  <th class="px-4 py-3">Estado</th>
+                  <th class="px-4 py-3 text-right">Arbitraje Inmediato</th>
+                </tr>
+              </thead>
+              <tbody id="admin-denuncias-table-body" class="divide-y divide-rose-100 text-slate-700">
+                <!-- Sincronizado dinámicamente desde Yuumil -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Censo Homologado de Derechos Agrarios (106 Municipios Reales en Cascada) -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-6 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50/50">
+            <div>
+              <h3 class="text-base font-bold text-slate-800">Censo Homologado de Derechos Agrarios</h3>
+              <p class="text-xs text-slate-500">Índice relacional de ejidatarios, localización geopolítica y asignaciones hereditarias.</p>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-2">
+              <select id="filter-municipio" onchange="onMunicipioFilterChange()" class="bg-white border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-600">
+                <!-- Municipios de Yucatán -->
+              </select>
+              <select id="filter-comisaria" onchange="renderAdminCensusTable()" class="bg-white border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-600">
+                <!-- Comisarías -->
+              </select>
+              <input type="text" id="table-search-input" oninput="renderAdminCensusTable()" placeholder="Buscar por nombre o CURP..." class="bg-white border border-slate-200 text-xs rounded-xl px-3 py-2 w-52 outline-none focus:ring-2 focus:ring-emerald-600">
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th class="px-6 py-4">Ejidatario / Beneficiario</th>
+                  <th class="px-6 py-4">CURP / Clave Única</th>
+                  <th class="px-6 py-4">Ubicación Geopolítica</th>
+                  <th class="px-6 py-4">Sucesores Designados</th>
+                  <th class="px-6 py-4">Situación Agraria</th>
+                  <th class="px-6 py-4 text-right">Auditoría Espacial</th>
+                </tr>
+              </thead>
+              <tbody id="admin-census-table-body" class="divide-y divide-slate-100 text-xs text-slate-700">
+                <!-- Inyectado vía JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+
+  <!-- ================================================================= -->
+  <!-- PRODUCTO 3: APP MÓVIL USUARIO (SIGE YUUMIL)                        -->
+  <!-- ================================================================= -->
+  <div id="section-yuumil" class="hidden min-h-screen bg-slate-100 flex flex-col justify-between">
+    
+    <!-- App Mobile Top Bar -->
+    <header class="bg-gov-dark text-white px-4 py-3 sticky top-0 z-40 shadow-md flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-lg shadow-inner">🌽</div>
+        <div>
+          <h1 class="font-bold text-sm tracking-tight leading-none">SIGE Yuumil</h1>
+          <p class="text-[10px] text-emerald-300 font-medium">Consola del Ejidatario</p>
+        </div>
+      </div>
+      <button onclick="logOutSystem()" class="bg-red-700/40 border border-red-500/20 px-3 py-1 rounded-xl text-[10px] font-bold text-red-100 transition">
+        Salir
+      </button>
+    </header>
+
+    <!-- App Viewport Container -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-20 scroll-touch max-w-md mx-auto w-full">
+      
+      <!-- SUB-SECCIÓN A: MI PARCELA -->
+      <div id="yuumil-view-parcela" class="yuumil-subview block space-y-4">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <div class="flex justify-between items-start">
+            <div>
+              <h3 class="font-bold text-slate-800 text-sm" id="yuumil-parcela-name">Cargando Parcela...</h3>
+              <p class="text-[11px] text-slate-500 mt-0.5"><span data-i18n="Superficie Registrada">Superficie Registrada</span>: <span class="font-bold text-slate-700" id="yuumil-parcela-surface">0.00 ha</span></p>
+            </div>
+            <div id="yuumil-parcela-badge"></div>
+          </div>
+          <div id="yuumil-map" class="h-56 rounded-xl border border-slate-200 shadow-inner"></div>
+
+          <!-- Semáforo legal de la parcela (sincronizado con denuncias de despojo) -->
+          <div id="yuumil-legal-semaforo" class="flex items-center gap-2.5 p-3 rounded-xl border bg-emerald-50 border-emerald-100">
+            <span id="yuumil-legal-dot" class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.18)]"></span>
+            <div class="leading-tight">
+              <p id="yuumil-legal-title" class="text-[11px] font-bold text-emerald-800">Estatus Legal: Sin conflictos</p>
+              <p id="yuumil-legal-sub" class="text-[10px] text-emerald-600">Parcela libre de gravámenes y litigios activos.</p>
+            </div>
+          </div>
+
+          <!-- Testamento Agrario Vigente (Art. 17 Ley Agraria) -->
+          <div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <div class="flex items-center gap-2.5">
+              <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_0_4px_rgba(16,185,129,0.2)]"></span>
+              <div class="leading-tight">
+                <p class="text-[11px] font-bold text-slate-800" data-i18n="Testamento Agrario Vigente ante el RAN">Testamento Agrario Vigente ante el RAN</p>
+                <p class="text-[10px] text-slate-500">Lista de sucesión depositada · Art. 17 Ley Agraria</p>
+              </div>
+            </div>
+            <span class="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full uppercase">Vigente</span>
+          </div>
+        </div>
+
+        <!-- Telemetría IoT en la milpa (ESP32 Drift Stream) -->
+        <div id="yuumil-iot-card" class="p-4 rounded-2xl border shadow-sm space-y-3 transition-colors duration-500 bg-white border-slate-200">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-base">🤖</span>
+              <h3 class="font-bold text-sm text-slate-800" data-i18n="Telemetría de Suelo en Tiempo Real">Telemetría de Suelo en Tiempo Real</h3>
+            </div>
+            <span id="yuumil-iot-status" class="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full uppercase flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Sensor ESP32 activo
+            </span>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-150">
+              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider" data-i18n="Humedad del Suelo">Humedad del Suelo</p>
+              <p class="mt-0.5"><span id="yuumil-iot-humidity" class="text-2xl font-black text-slate-800">42</span><span class="text-sm font-bold text-slate-400">%</span></p>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-150">
+              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider" data-i18n="Temperatura">Temperatura</p>
+              <p class="mt-0.5"><span id="yuumil-iot-temp" class="text-2xl font-black text-slate-800">28.0</span><span class="text-sm font-bold text-slate-400">°C</span></p>
+            </div>
+          </div>
+          <p id="yuumil-iot-alert" class="hidden text-[11px] font-bold text-center py-1.5 rounded-lg"></p>
+        </div>
+      </div>
+
+      <!-- SUB-SECCIÓN B: MIS DOCUMENTOS / SUBIDA REAL SINCRO -->
+      <div id="yuumil-view-documentos" class="yuumil-subview hidden space-y-4">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div class="border-b pb-2">
+            <h3 class="font-bold text-sm text-slate-800" data-i18n="Mi Expediente Digitalizado">Mi Expediente Digitalizado</h3>
+            <p class="text-[11px] text-slate-500 mt-0.5">Historial y estado de validación interna ante la mesa directiva.</p>
+          </div>
+          
+          <div class="space-y-2.5" id="yuumil-docs-list">
+            <!-- Cargado Dinámicamente -->
+          </div>
+
+          <div class="pt-2 border-t border-slate-100 space-y-2">
+            <label class="block font-bold text-slate-700 text-[11px] uppercase tracking-wide">Subir Nuevo Archivo para Validación</label>
+            <div class="flex gap-2">
+              <select id="yuumil-upload-type" class="bg-slate-50 border text-xs rounded-xl p-2 outline-none flex-1">
+                <option value="Certificado Parcelario">Certificado Parcelario</option>
+                <option value="Acta de Designación Sucesores">Acta de Designación Sucesores</option>
+                <option value="Identificación Oficial">Identificación Oficial (INE)</option>
+              </select>
+              <button onclick="executeSimulatedUpload()" class="bg-gov-dark text-white text-xs font-bold px-3 py-2 rounded-xl active:scale-95 transition shadow">Subir</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUB-SECCIÓN C: MI FAMILIA / SUCESIÓN -->
+      <div id="yuumil-view-sucesion" class="yuumil-subview hidden space-y-4">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div class="border-b pb-2">
+            <h3 class="font-bold text-sm text-slate-800" data-i18n="Línea Sucesoria Familiar">Línea Sucesoria Familiar</h3>
+            <p class="text-[11px] text-slate-500 mt-0.5">Registro oficial de prelación de beneficiarios legítimos.</p>
+          </div>
+
+          <div class="space-y-2" id="yuumil-family-container">
+            <!-- Cargado Dinámicamente -->
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 space-y-3">
+            <p class="font-bold text-slate-700 text-[11px] uppercase tracking-wider">Designar Nuevo Familiar / Sucesor</p>
+            <div class="grid grid-cols-2 gap-2">
+              <input type="text" id="fam-name" placeholder="Nombre completo" class="bg-slate-50 border rounded-xl p-2.5 text-xs outline-none">
+              <select id="fam-kinship" class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs outline-none">
+                <option value="Cónyuge">Cónyuge</option>
+                <option value="Hijo">Hijo/a</option>
+                <option value="Beneficiario Preferente">Beneficiario Preferente</option>
+              </select>
+            </div>
+            <input type="text" id="fam-curp" placeholder="CURP (18 Caracteres)" class="bg-slate-50 border rounded-xl p-2.5 text-xs font-mono uppercase tracking-wide w-full outline-none">
+            <div class="space-y-1">
+              <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wide">Orden de Prelación Sucesoria · Art. 17</label>
+              <select id="fam-orden" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold outline-none">
+                <option value="1">1° Orden (Preferente)</option>
+                <option value="2">2° Orden</option>
+                <option value="3">3° Orden</option>
+              </select>
+              <p class="text-[9px] text-slate-400 leading-snug">La Ley Agraria exige una prelación estricta sin empates entre beneficiarios del mismo orden.</p>
+            </div>
+            <button onclick="executeAddFamilyNode()" class="w-full bg-[#1A4D3B] text-white font-bold py-2.5 rounded-xl text-xs uppercase shadow tracking-wider btn-press">Inscribir en Padrón Familiar</button>
+          </div>
+        </div>
+
+        <!-- Cesión de Derechos con Traba Inteligente (Art. 80 Ley Agraria) -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <div class="border-b pb-2 flex items-center gap-2">
+            <span class="text-base">📜</span>
+            <div>
+              <h3 class="font-bold text-sm text-slate-800" data-i18n="Cesión de Derechos (Art. 80)">Cesión de Derechos (Art. 80)</h3>
+              <p class="text-[11px] text-slate-500 mt-0.5">Enajenación de derechos parcelarios a un tercero.</p>
+            </div>
+          </div>
+          <div class="space-y-1.5">
+            <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wide">Nombre del Comprador / Cesionario</label>
+            <input type="text" id="cesion-buyer" placeholder="Nombre completo del adquirente" class="w-full bg-slate-50 border rounded-xl p-2.5 text-xs outline-none">
+          </div>
+          <label class="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-100 rounded-xl cursor-pointer">
+            <input type="checkbox" id="cesion-pref" class="mt-0.5 w-4 h-4 accent-emerald-600 shrink-0">
+            <span class="text-[10px] text-amber-800 leading-relaxed font-medium">
+              Declaro bajo protesta de decir verdad que respeté los <b>30 días naturales del Derecho de Preferencia</b> de mi cónyuge e hijos, conforme al Art. 80 de la Ley Agraria.
+            </span>
+          </label>
+          <button onclick="executeArt80Cesion()" class="w-full bg-gov-gold text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider shadow btn-press">Procesar Cesión de Derechos</button>
+        </div>
+      </div>
+
+      <!-- SUB-SECCIÓN D: AVISOS NOTIFICACIONES -->
+      <div id="yuumil-view-avisos" class="yuumil-subview hidden space-y-4">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <h3 class="font-bold text-sm text-slate-800 border-b pb-2" data-i18n="Notificaciones del Comisariado">Notificaciones del Comisariado</h3>
+          <div class="space-y-2" id="yuumil-alerts-container">
+            <!-- Inyectado vía JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- SUB-SECCIÓN E: VENTANILLA DE ALERTA DE DESPOJO E INVASIÓN -->
+      <div id="yuumil-view-reportes" class="yuumil-subview hidden space-y-4">
+        <div class="bg-rose-600 p-4 rounded-2xl shadow-sm text-white space-y-1">
+          <h3 class="font-black text-sm flex items-center gap-2" data-i18n="Ventanilla de Alerta de Despojo">🚨 Ventanilla de Alerta de Despojo</h3>
+          <p class="text-[11px] text-rose-100 leading-relaxed">Denuncia legal contra invasiones inmobiliarias. Tu reporte se turna de inmediato al Comisariado y a la Procuraduría Agraria.</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <div class="space-y-1.5">
+            <label class="font-bold text-slate-600 uppercase text-[9px] block" data-i18n="Tipificación del Delito">Tipificación del Delito</label>
+            <select id="report-type" class="w-full bg-slate-50 border rounded-xl p-2.5 text-xs outline-none">
+              <option>Presión de compra-venta ilegal</option>
+              <option>Invasión física de linderos</option>
+              <option>Despojo de posesión / ocupación indebida</option>
+              <option>Alteración de mojoneras o vértices</option>
+            </select>
+          </div>
+          <div class="space-y-1.5">
+            <label class="font-bold text-slate-600 uppercase text-[9px] block">Relato de los Hechos</label>
+            <textarea id="report-text" placeholder="Describe la invasión o presión: quién, cuándo y sobre qué lindero..." class="w-full bg-slate-50 border rounded-xl p-2.5 text-xs outline-none h-24 resize-none"></textarea>
+          </div>
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[10px] text-slate-500 leading-relaxed flex items-start gap-2">
+            <span>📍</span>
+            <span>Al enviar se capturan automáticamente las <b>coordenadas periciales</b> de tu terreno y el semáforo legal de la parcela pasará a <b class="text-rose-600">alerta crítica</b>.</span>
+          </div>
+          <button onclick="submitDespojoAlert()" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider shadow-md btn-press">Enviar Denuncia de Despojo</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- App Mobile Bottom Menu -->
+    <nav class="fixed bottom-0 inset-x-0 bg-gov-dark border-t border-white/10 h-16 flex justify-around items-center z-40 px-1 shadow-2xl" id="yuumil-tab-bar">
+      <button onclick="switchYuumilTab('yuumil-view-parcela', this)" class="yuumil-tab-btn flex flex-col items-center justify-center text-white font-bold text-[10px] flex-1 h-full bg-emerald-800">
+        <span class="text-lg">🌽</span><span>Parcela</span>
+      </button>
+      <button onclick="switchYuumilTab('yuumil-view-documentos', this)" class="yuumil-tab-btn flex flex-col items-center justify-center text-emerald-200/60 font-medium text-[10px] flex-1 h-full">
+        <span class="text-lg">📄</span><span>Papeles</span>
+      </button>
+      <button onclick="switchYuumilTab('yuumil-view-sucesion', this)" class="yuumil-tab-btn flex flex-col items-center justify-center text-emerald-200/60 font-medium text-[10px] flex-1 h-full">
+        <span class="text-lg">👥</span><span>Familia</span>
+      </button>
+      <button onclick="switchYuumilTab('yuumil-view-avisos', this)" class="yuumil-tab-btn flex flex-col items-center justify-center text-emerald-200/60 font-medium text-[10px] flex-1 h-full">
+        <span class="text-lg">🔔</span><span>Avisos</span>
+      </button>
+      <button onclick="switchYuumilTab('yuumil-view-reportes', this)" class="yuumil-tab-btn flex flex-col items-center justify-center text-emerald-200/60 font-medium text-[10px] flex-1 h-full">
+        <span class="text-lg">🚨</span><span data-i18n="Denuncia">Denuncia</span>
+      </button>
+    </nav>
+  </div>
+
+
+  <!-- ================================================================= -->
+  <!-- TOASTS PUSH OMNICANAL (WHATSAPP LIVE)                             -->
+  <!-- ================================================================= -->
+  <div id="wa-toast-stack"></div>
+
+
+  <!-- ================================================================= -->
+  <!-- MODALS AUXILIARES GLOBAL                                          -->
+  <!-- ================================================================= -->
+  <div id="global-alert-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200 p-4">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+      <div class="p-4 text-white bg-[#143F30] flex justify-between items-center" id="alert-modal-header">
+        <h4 class="font-bold text-xs uppercase tracking-wider" id="alert-modal-title">Aviso de Sistema</h4>
+        <button onclick="closeGlobalAlert()" class="text-white font-bold text-sm">&times;</button>
+      </div>
+      <div class="p-5 text-xs text-slate-600 space-y-3">
+        <p id="alert-modal-message" class="leading-relaxed font-medium text-slate-700">-</p>
+        <button onclick="closeGlobalAlert()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl uppercase tracking-wide transition">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="legal-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200 p-4">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-100">
+      <div class="p-5 text-white bg-[#143F30] flex justify-between items-center">
+        <div>
+          <span class="text-[9px] font-bold uppercase tracking-widest opacity-80">Expediente Registral</span>
+          <h4 class="text-base font-bold" id="modal-title">Ficha de Parcela</h4>
+        </div>
+        <button onclick="closeLegalModal()" class="text-white font-bold text-sm">&times;</button>
+      </div>
+      <div class="p-6 space-y-4 text-xs text-slate-600">
+        <div>
+          <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Titular de Derechos Agrarios</p>
+          <p class="font-bold text-slate-800 text-sm" id="modal-owner">-</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-150"><p class="text-[9px] font-bold text-slate-400 uppercase">Superficie</p><p class="font-bold text-slate-800 mt-0.5" id="modal-surface">0.00 ha</p></div>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-150"><p class="text-[9px] font-bold text-slate-400 uppercase">Estatus RAN</p><div class="mt-0.5 font-bold" id="modal-badge">-</div></div>
+        </div>
+        <div class="bg-emerald-50/60 border border-emerald-100 p-3.5 rounded-xl"><p class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Sucesión Familiar Directa</p><p class="text-[11px] text-slate-700 font-medium mt-1" id="modal-family">-</p></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================================================================= -->
+  <!-- CONTROLADORES LÓGICOS Y LÓGICA DE DATOS CENTRALIZADA              -->
+  <!-- ================================================================= -->
+  <script>
+    // BASE DE DATOS GEOPOLÍTICA: 106 MUNICIPIOS REALES DE YUCATÁN CON SUS COMISARÍAS REPRESENTATIVAS
+    const REAL_YUCATAN_GEO = {
+      "Mérida": { centro: [20.967, -89.592], comisarías: ["San José Tzal", "Molas", "Chablekal", "Caucel", "Komchén", "Dzityá"] },
+      "Tizimín": { centro: [21.142, -88.149], comisarías: ["El Cuyo", "Colonia Yucatán", "Popolnah", "Dzonot Carretero"] },
+      "Valladolid": { centro: [20.690, -88.201], comisarías: ["Yalcobá", "Kanxoc", "Popolá", "Pixoy", "Tixhualactún"] },
+      "Motul": { centro: [21.095, -89.283], comisarías: ["Kiní", "Ucí", "Sacapuc", "Kaxatah"] },
+      "Izamal": { centro: [20.931, -88.850], comisarías: ["Kimbilá", "Sitilpech", "Cuauhtémoc"] },
+      "Progreso": { centro: [21.283, -89.664], comisarías: ["Chicxulub Puerto", "Chelem", "Chuburná Puerto", "Flamboyanes"] },
+      "Tekax": { centro: [20.201, -89.284], comisarías: ["Pencuyut", "Tixcuytún", "Xaya", "Kancab"] },
+      "Ticul": { centro: [20.398, -89.535], comisarías: ["Pustunich", "Yotholín"] },
+      "Chemax": { centro: [20.655, -87.937], comisarías: ["X-Cán", "Coba", "Mukel"] },
+      "Hunucmá": { centro: [21.017, -89.876], comisarías: ["Sisal", "Texán de Palomeque", "Huntochac"] },
+      "Maxcanú": { centro: [20.583, -89.998], comisarías: ["Santo Domingo", "San Rafael", "Coahuila"] },
+      "Oxkutzcab": { centro: [20.304, -89.417], comisarías: ["Yaxhachén", "Xul", "Emiliano Zapata"] },
+      "Umán": { centro: [20.883, -89.746], comisarías: ["Oxcum", "Yaxcopoil", "Poxilá", "Bolón"] }
+    };
+
+    const TODOS_MUNICIPIOS = [
+      "Abalá", "Acanceh", "Akil", "Baca", "Bokobá", "Buctzotz", "Cacalchén", "Calotmul", "Cansahcab", "Cantamayec", 
+      "Celestún", "Cenotillo", "Chacsinkín", "Chankom", "Chaparro", "Chicxulub Pueblo", "Chichimilá", "Chikindzonot", "Chocholá", "Chumayel", 
+      "Conkal", "Cuncunul", "Cuzamá", "Dzán", "Dzemul", "Dzidzantún", "Dzilam de Bravo", "Dzilam González", "Dzitás", "Dzizantún", 
+      "Espita", "Halachó", "Hocabá", "Hoctún", "Homún", "Huhí", "Ixil", "Janal", "Kanasín", "Kantunil", 
+      "Kaua", "Kinchil", "Kopomá", "Mama", "Maní", "Mayapán", "Muxupip", "Opichén", "Panabá", "Peto", 
+      "Quintana Roo", "Río Lagartos", "Sacalum", "Samil", "San Felipe", "Sanahcat", "Santa Elena", "Seyé", "Suma", "Tahdziú", 
+      "Tahmek", "Teabo", "Tecoh", "Tecal de Venegas", "Tecal", "Tekantó", "Tekom", "Telchac Pueblo", "Telchac Puerto", "Temax", 
+      "Temozón", "Tepakán", "Tetiz", "Teya", "Ticul", "Timucuy", "Tixcacalcupul", "Tixkokob", "Tixmehuac", "Tixpéhual", 
+      "Tunkás", "Tzucacab", "Uayma", "Xocchel", "Yaxcabá", "Yaxkukul", "Yobaín"
+    ];
+    TODOS_MUNICIPIOS.forEach(m => {
+      if(!REAL_YUCATAN_GEO[m]) REAL_YUCATAN_GEO[m] = { centro: [20.7, -89.3], comisarías: ["Comisaría Ejidal Centro", "Anexo Comunal"] };
+    });
+
+    const MOCK_DB_SEED = {
+      ejidatarios: [
+        { id: "E01", nombre: "Dionisio Canul Poot", curp: "CAPD630408HYNMNR02", estado: "Activo", municipio: "Mérida", comisaria: "San José Tzal", familiares: "María Candelaria Pech Pat (Cónyuge), Jacinto Canul Pech (Hijo)" },
+        { id: "E02", nombre: "Filomena Xiu Balam", curp: "XIBF720915MYNLRD04", estado: "Activo", municipio: "Mérida", comisaria: "Chablekal", familiares: "Canek Chan Xiu (Hijo)" },
+        { id: "E03", nombre: "Eustacio May Chablé", curp: "MACE580120HYNTZN01", estado: "Pendiente", municipio: "Tizimín", comisaria: "El Cuyo", familiares: "Rosa Isela May Pat (Hija)" },
+        { id: "E04", nombre: "Rigoberto Tun Ek", curp: "TUER751102HYNNLN03", estado: "Activo", municipio: "Valladolid", comisaria: "Kanxoc", familiares: "Felipe Neri Tun Ek (Hermano)" },
+        { id: "E05", nombre: "Crecencia Pool Dzib", curp: "PODC680514MYNNSB06", estado: "Sin Regularizar", municipio: "Motul", comisaria: "Kiní", familiares: "Manuel Jesús Oy Pat (Esposo)" },
+        { id: "E06", nombre: "Anastacio Pech Uc", curp: "PEUA610319HYNMCH09", estado: "Activo", municipio: "Mérida", comisaria: "Caucel", familiares: "Ninguno" },
+        { id: "E07", nombre: "Guadalupe de la Cruz Cohuo", curp: "COCG820712MYNRLN01", estado: "Activo", municipio: "Izamal", comisaria: "Kimbilá", familiares: "Estela Canché Cohuo (Hija)" },
+        { id: "E08", nombre: "Gualberto Yamá Dzul", curp: "YADG660228HYNMNS00", estado: "Pendiente", municipio: "Progreso", comisaria: "Flamboyanes", familiares: "Ninguno" },
+        { id: "E09", nombre: "Lorenzo Huchim Moo", curp: "HUML700810HYNCHD07", estado: "Activo", municipio: "Tekax", comisaria: "Pencuyut", familiares: "Rigoberto Huchim (Hijo)" },
+        { id: "E10", nombre: "Feliciana Caamal Xiu", curp: "CAXF741005MYNMRN05", estado: "Sin Regularizar", municipio: "Ticul", comisaria: "Pustunich", familiares: "María Caamal (Madre)" },
+        { id: "E11", nombre: "Arsenio May Chan", curp: "MACA640212HYNMNN01", estado: "Activo", municipio: "Chemax", comisaria: "X-Cán", familiares: "Ninguno" },
+        { id: "E12", nombre: "Silvia María Pech Pool", curp: "PEPS790822MYNCHR04", estado: "Activo", municipio: "Umán", comisaria: "Yaxcopoil", familiares: "Ninguno" },
+        { id: "E13", nombre: "Javier Pat Tzab", curp: "PATJ711014HYNTRN08", estado: "Pendiente", municipio: "Maxcanú", comisaria: "San Rafael", familiares: "Ninguno" },
+        { id: "E14", nombre: "Petrona Dzul Canul", curp: "DZCP660505MYNZLN00", estado: "Activo", municipio: "Oxkutzcab", comisaria: "Xul", familiares: "Ninguno" },
+        { id: "E15", nombre: "Manuel Jesús Poot Ku", curp: "POKM601130HYNTSB02", estado: "Activo", municipio: "Hunucmá", comisaria: "Sisal", familiares: "Ninguno" }
+      ],
+      parcelas: [
+        { id: "P01", nombre: "Parcela Fracción Norte 1", ejidatarioId: "E01", superficie: 14.25, estado: "Activo", coords: [[20.821, -89.650], [20.828, -89.640], [20.824, -89.630], [20.816, -89.640]] },
+        { id: "P02", nombre: "Milpa Ex-Henequenera", ejidatarioId: "E02", superficie: 8.10, estado: "Activo", coords: [[20.865, -89.630], [20.872, -89.620], [20.868, -89.610], [20.860, -89.620]] },
+        { id: "P03", nombre: "Monte Alto Sin Asignar", ejidatarioId: "E05", superficie: 32.15, estado: "Sin Regularizar", coords: [[21.090, -89.270], [21.098, -89.260], [21.094, -89.250], [21.086, -89.260]] },
+        { id: "P04", nombre: "Lote Tablaje 409", ejidatarioId: "E03", superficie: 19.45, estado: "Pendiente", coords: [[21.510, -88.020], [21.518, -88.010], [21.512, -88.000], [21.505, -88.010]] },
+        { id: "P05", nombre: "Tablaje Poniente Rancho", ejidatarioId: "E04", superficie: 25.00, estado: "Activo", coords: [[20.640, -88.250], [20.648, -88.240], [20.644, -88.230], [20.636, -88.240]] }
+      ],
+      documentos: [
+        { id: "D01", ejidatarioId: "E01", tipo: "Certificado Parcelario", archivo: "CP-YUC-049201.pdf", estado: "Aprobado" },
+        { id: "D02", ejidatarioId: "E01", tipo: "Acta de Designación Sucesores", archivo: "ADS-1094.pdf", estado: "Pendiente" },
+        { id: "D03", ejidatarioId: "E02", tipo: "Certificado Parcelario", archivo: "CP-YUC-051209.pdf", estado: "Aprobado" },
+        { id: "D04", ejidatarioId: "E03", tipo: "Identificación Oficial", archivo: "INE-EUSTACIO.pdf", estado: "Rechazado" }
+      ],
+      familiares: [
+        { id: "F01", ejidatarioId: "E01", nombre: "María Candelaria Pech Pat", parentesco: "Cónyuge", curp: "PEPM650812MYNCHR01", orden: "1" },
+        { id: "F02", ejidatarioId: "E01", nombre: "Jacinto Canul Pech", parentesco: "Hijo", curp: "CAPJ900403HYNMNN09", orden: "2" }
+      ],
+      denuncias: [],
+      avisos: [
+        { id: "A01", titulo: "Convocatoria: Asamblea General de Formalidades Especiales", cuerpo: "Próximo domingo a las 10:00 AM en la casa ejidal. Orden del día: Delimitación de solares.", fecha: "22/06/2026" },
+        { id: "A02", titulo: "Campaña de Apoyos de Fertilizantes e Insumos", cuerpo: "Presentar copia de Certificado Parcelario validado en el SIGE en las mesas técnicas de atención.", fecha: "20/06/2026" }
+      ]
+    };
+
+    function startStorageEngine() {
+      let db = null;
+      try { db = JSON.parse(localStorage.getItem("sige_pro_backoffice_db")); } catch(e) { db = null; }
+      if(!db) db = JSON.parse(JSON.stringify(MOCK_DB_SEED));
+
+      // Migraciones NO destructivas (preserva datasets existentes y agrega campos nuevos)
+      if(!Array.isArray(db.denuncias)) db.denuncias = [];
+      if(Array.isArray(db.familiares)) {
+        db.familiares.forEach((f, i) => { if(!f.orden) f.orden = String((i % 3) + 1); });
+      }
+
+      localStorage.setItem("sige_pro_backoffice_db", JSON.stringify(db));
+      return db;
+    }
+
+    let GLOBAL_STATE = startStorageEngine();
+    let adminMapInstance, yuumilMapInstance;
+    let adminPolygons = [], yuumilPolygons = [];
+    let CURRENT_SESSION = null;
+    let IOT_STREAM_INTERVAL = null;     // Stream autónomo ESP32
+    let CURRENT_LANG = 'es';            // Motor de traducción Maya
+    let WA_TOAST_SEQ = 0;               // Secuencia de toasts WhatsApp
+
+    // MODALES CENTRALIZADOS
+    function displayGlobalAlert(title, message, isUrgent = false) {
+      const modal = document.getElementById('global-alert-modal');
+      const header = document.getElementById('alert-modal-header');
+      header.className = isUrgent ? "p-4 text-white bg-red-700 flex justify-between items-center" : "p-4 text-white bg-[#143F30] flex justify-between items-center";
+      document.getElementById('alert-modal-title').innerText = title;
+      document.getElementById('alert-modal-message').innerText = message;
+      modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
+    
+    function closeGlobalAlert() {
+      const modal = document.getElementById('global-alert-modal');
+      modal.classList.add('opacity-0'); setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+    function openLoginModal() {
+      const modal = document.getElementById('modal-login'); modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
+    function closeLoginModal() {
+      const modal = document.getElementById('modal-login'); modal.classList.add('opacity-0');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+    function openAccessModal() {
+      const modal = document.getElementById('modal-access'); modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
+    function closeAccessModal() {
+      const modal = document.getElementById('modal-access'); modal.classList.add('opacity-0');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+    function submitAccessRequest() {
+      closeAccessModal();
+      displayGlobalAlert("Solicitud Enviada", "Petición registrada ante la delegación estatal.");
+    }
+
+    // RUTAS DE SESIÓN AGRARIA
+    function executeAuthLogin(e) {
+      e.preventDefault();
+      const role = document.getElementById('auth-role').value;
+      const userInputValue = document.getElementById('auth-user').value.toUpperCase();
+      closeLoginModal();
+
+      if(role === 'admin') {
+        document.getElementById('section-landing').className = "hidden";
+        document.getElementById('section-admin').className = "flex h-screen w-screen overflow-hidden";
+        setTimeout(() => orquestarAdminDashboard(), 50);
+      } else {
+        let ejidatarioMatch = GLOBAL_STATE.ejidatarios.find(ej => ej.nombre.toUpperCase().includes(userInputValue) || ej.curp === userInputValue);
+        if(!ejidatarioMatch) ejidatarioMatch = GLOBAL_STATE.ejidatarios[0]; // Dionisio Fallback
+        CURRENT_SESSION = ejidatarioMatch;
+        
+        document.getElementById('section-landing').className = "hidden";
+        document.getElementById('section-yuumil').className = "flex min-h-screen bg-slate-100 flex flex-col justify-between";
+        setTimeout(() => orquestarYuumilApp(), 50);
+      }
+    }
+
+    function logOutSystem() {
+      stopDemoIoTStream(); // detiene el stream autónomo ESP32
+      document.getElementById('section-admin').className = "hidden";
+      document.getElementById('section-yuumil').className = "hidden";
+      document.getElementById('section-landing').className = "block min-h-screen flex flex-col justify-between bg-slate-50";
+      CURRENT_SESSION = null;
+    }
+
+    // ================================================================= -->
+    // ORQUESTRACIÓN CORE: CONSOLA ADMIN SAAS                             -->
+    // ================================================================= -->
+    function orquestarAdminDashboard() {
+      if(!adminMapInstance) {
+        adminMapInstance = L.map('admin-map', { zoomControl: false, attributionControl: false }).setView([20.850, -89.300], 9);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(adminMapInstance);
+      }
+      renderAdminPolygons();
+      renderAdminDocsTable();
+      renderAdminDenuncias();
+      buildFilterSelectors();
+
+      // Re-aplica el idioma activo a las vistas recién renderizadas
+      const langSel = document.getElementById('lang-selector');
+      if(langSel) langSel.value = CURRENT_LANG;
+      applyMayaTranslationEngine(CURRENT_LANG);
+    }
+
+    function renderAdminPolygons() {
+      adminPolygons.forEach(p => adminMapInstance.removeLayer(p)); adminPolygons = [];
+      GLOBAL_STATE.parcelas.forEach(p => {
+        let colors = { "Activo": "#10B981", "Pendiente": "#F59E0B", "Sin Regularizar": "#EF4444" };
+        const color = colors[p.estado] || "#64748B";
+        const poly = L.polygon(p.coords, { color: color, fillColor: color, fillOpacity: 0.35, weight: 2.5 }).addTo(adminMapInstance);
+        poly.bindTooltip(`<b>${p.nombre}</b><br>Superficie: ${p.superficie} ha`);
+        poly.on('click', () => {
+          const owner = GLOBAL_STATE.ejidatarios.find(e => e.id === p.ejidatarioId) || { nombre: "Sin regularizar", familiares: "Ninguno" };
+          openLegalModal(p, owner);
+        });
+        adminPolygons.push(poly);
+      });
+    }
+
+    function recenterAdminMap() {
+      if(adminMapInstance) adminMapInstance.setView([20.850, -89.300], 9);
+      document.getElementById('filter-municipio').value = "ALL";
+      onMunicipioFilterChange();
+    }
+
+    function focusParcelOnGis(parcelaId) {
+      const target = GLOBAL_STATE.parcelas.find(p => p.id === parcelaId);
+      if(target && adminMapInstance) {
+        adminMapInstance.fitBounds(L.latLngBounds(target.coords), { padding: [40, 40], maxZoom: 14 });
+      }
+    }
+
+    // WORKFLOW CONECTADO DE REVISIÓN AGRARIA (ADMIN SIDE)
+    function renderAdminDocsTable() {
+      const tbody = document.getElementById('admin-docs-table-body'); tbody.innerHTML = '';
+      GLOBAL_STATE.documentos.forEach(d => {
+        const ejidatario = GLOBAL_STATE.ejidatarios.find(e => e.id === d.ejidatarioId) || { nombre: "Desconocido" };
+        let badgeStyle = { "Aprobado": "bg-emerald-100 text-emerald-800", "Pendiente": "bg-amber-100 text-amber-800", "Rechazado": "bg-red-100 text-red-800" }[d.estado];
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="px-4 py-3 font-bold text-slate-800">${ejidatario.nombre}</td>
+            <td class="px-4 py-3 font-medium text-slate-500">${d.tipo}</td>
+            <td class="px-4 py-3 font-mono text-slate-600">${d.archivo}</td>
+            <td class="px-4 py-3"><span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${badgeStyle}">${tr(d.estado)}</span></td>
+            <td class="px-4 py-3 text-right space-x-1">
+              <button onclick="mutateDocStatus('${d.id}', 'Aprobado')" class="bg-emerald-600 text-white font-bold px-2 py-1 rounded text-[10px]">Aprobar</button>
+              <button onclick="mutateDocStatus('${d.id}', 'Rechazado')" class="bg-red-600 text-white font-bold px-2 py-1 rounded text-[10px]">Rechazar</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function mutateDocStatus(docId, newStatus) {
+      const doc = GLOBAL_STATE.documentos.find(d => d.id === docId);
+      if(doc) {
+        doc.estado = newStatus;
+        saveStateToStorage();
+        renderAdminDocsTable();
+        displayGlobalAlert("Dictamen Sincronizado", `Estatus del archivo modificado a: ${newStatus}`);
+
+        // Notificación push omnicanal hacia el ejidatario (WhatsApp Live)
+        const ejidatario = GLOBAL_STATE.ejidatarios.find(e => e.id === doc.ejidatarioId) || { nombre: "Ejidatario" };
+        const primerNombre = ejidatario.nombre.split(' ')[0];
+        if(newStatus === 'Aprobado') {
+          pushWhatsAppToast(tr('Documento aprobado') , `${primerNombre}, tu "${doc.tipo}" fue APROBADO por el Comisariado. Ya es válido ante el RAN.`, 'aprobado');
+        } else if(newStatus === 'Rechazado') {
+          pushWhatsAppToast(tr('Documento rechazado'), `${primerNombre}, tu "${doc.tipo}" fue RECHAZADO. Acude al Comisariado para subsanar el expediente.`, 'rechazado');
+        }
+      }
+    }
+
+    function buildFilterSelectors() {
+      const munSelect = document.getElementById('filter-municipio');
+      munSelect.innerHTML = `<option value="ALL">Cualquier Municipio (106)</option>`;
+      Object.keys(REAL_YUCATAN_GEO).sort().forEach(m => {
+        munSelect.innerHTML += `<option value="${m}">${m}</option>`;
+      });
+      onMunicipioFilterChange();
+    }
+
+    function onMunicipioFilterChange() {
+      const munSelected = document.getElementById('filter-municipio').value;
+      const comSelect = document.getElementById('filter-comisaria');
+      comSelect.innerHTML = `<option value="ALL">Cualquier Comisaría</option>`;
+
+      if(munSelected !== 'ALL' && REAL_YUCATAN_GEO[munSelected]) {
+        REAL_YUCATAN_GEO[munSelected].comisarías.forEach(c => {
+          comSelect.innerHTML += `<option value="${c}">${c}</option>`;
+        });
+        if(adminMapInstance) adminMapInstance.flyTo(REAL_YUCATAN_GEO[munSelected].centro, 11, { duration: 1.2 });
+      }
+      renderAdminCensusTable();
+    }
+
+    function renderAdminCensusTable() {
+      const tbody = document.getElementById('admin-census-table-body'); tbody.innerHTML = '';
+      const search = document.getElementById('table-search-input').value.toLowerCase();
+      const mun = document.getElementById('filter-municipio').value;
+      const com = document.getElementById('filter-comisaria').value;
+
+      GLOBAL_STATE.ejidatarios.forEach(e => {
+        if (mun !== 'ALL' && e.municipio !== mun) return;
+        if (com !== 'ALL' && e.comisaria !== com) return;
+        if (search && !e.nombre.toLowerCase().includes(search) && !e.curp.toLowerCase().includes(search)) return;
+
+        const parcelas = GLOBAL_STATE.parcelas.filter(p => p.ejidatarioId === e.id);
+        let actionButtons = parcelas.map(p => `
+          <button onclick="focusParcelOnGis('${p.id}')" class="bg-slate-50 border border-slate-200 text-slate-700 active:bg-emerald-800 px-2 py-1 rounded-xl font-bold text-[10px] m-0.5">
+            📍 ${p.nombre}
+          </button>
+        `).join('');
+
+        let statusBadge = e.estado === 'Activo'
+          ? `<span class="bg-emerald-100 text-emerald-800 text-[10px] px-2.5 py-0.5 rounded-full font-bold">${tr('Inscrito RAN')}</span>`
+          : `<span class="bg-amber-100 text-amber-800 text-[10px] px-2.5 py-0.5 rounded-full font-bold">${tr('En Dictamen')}</span>`;
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="px-6 py-4 font-bold text-slate-800">${e.nombre}</td>
+            <td class="px-6 py-4 font-mono text-slate-500 font-semibold">${e.curp}</td>
+            <td class="px-6 py-4 font-medium text-slate-600">${e.municipio} · <span class="text-slate-400 text-[11px]">${e.comisaria}</span></td>
+            <td class="px-6 py-4 text-slate-500 max-w-xs truncate">${e.familiares || 'Sin declarar'}</td>
+            <td class="px-6 py-4">${statusBadge}</td>
+            <td class="px-6 py-4 text-right">${actionButtons || '<span class="text-slate-400 italic">Sin asignación</span>'}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function openLegalModal(parcela, owner) {
+      const modal = document.getElementById('legal-modal');
+      document.getElementById('modal-title').innerText = parcela.nombre;
+      document.getElementById('modal-owner').innerText = owner.nombre;
+      document.getElementById('modal-surface').innerText = `${parcela.superficie} ha`;
+      document.getElementById('modal-family').innerText = owner.familiares || "Sin datos de prelación.";
+      
+      let badgeHTML = parcela.estado === 'Activo' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800';
+      document.getElementById('modal-badge').className = `px-2 py-0.5 rounded text-[10px] font-bold ${badgeHTML}`;
+      document.getElementById('modal-badge').innerText = parcela.estado;
+
+      modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
+    function closeLegalModal() {
+      const modal = document.getElementById('legal-modal');
+      modal.classList.add('opacity-0'); setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+
+    // ================================================================= -->
+    // ORQUESTRACIÓN FRONTEND LIGERO: APP YUUMIL SINCRO                   -->
+    // ================================================================= -->
+    function orquestarYuumilApp() {
+      switchYuumilTab('yuumil-view-parcela', document.querySelector('#yuumil-tab-bar button'));
+      
+      const parcela = GLOBAL_STATE.parcelas.find(p => p.ejidatarioId === CURRENT_SESSION.id) || {
+        nombre: "Uso Común / Sin Parcela Individual", superficie: 0.00, estado: "Pendiente", coords: [[20.820, -89.635], [20.825, -89.630], [20.822, -89.625]]
+      };
+
+      document.getElementById('yuumil-parcela-name').innerText = parcela.nombre;
+      document.getElementById('yuumil-parcela-surface').innerText = `${parcela.superficie} ha`;
+      
+      let badgeStyle = parcela.estado === 'Activo' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800';
+      document.getElementById('yuumil-parcela-badge').innerHTML = `<span class="px-2.5 py-1 rounded-full font-bold text-[10px] uppercase ${badgeStyle}">${parcela.estado}</span>`;
+
+      if(!yuumilMapInstance) {
+        yuumilMapInstance = L.map('yuumil-map', { zoomControl: false, attributionControl: false, scrollWheelZoom: false });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(yuumilMapInstance);
+      }
+      
+      yuumilPolygons.forEach(p => yuumilMapInstance.removeLayer(p)); yuumilPolygons = [];
+      const poly = L.polygon(parcela.coords, { color: '#10B981', fillColor: '#10B981', fillOpacity: 0.4, weight: 3 }).addTo(yuumilMapInstance);
+      yuumilPolygons.push(poly);
+      yuumilMapInstance.fitBounds(L.latLngBounds(parcela.coords), { padding: [15, 15] });
+
+      renderYuumilDocs();
+      renderYuumilFamily();
+      renderYuumilAlerts();
+
+      // Semáforo legal según denuncias activas de despojo del ejidatario
+      const tieneDenuncia = GLOBAL_STATE.denuncias.some(d => d.ejidatarioId === CURRENT_SESSION.id && d.estado !== undefined);
+      setYuumilLegalSemaforo(tieneDenuncia);
+
+      // Arranca el stream autónomo de telemetría ESP32
+      startDemoIoTStream();
+    }
+
+    function switchYuumilTab(targetViewId, element) {
+      document.querySelectorAll('.yuumil-subview').forEach(v => v.classList.add('hidden'));
+      document.getElementById(targetViewId).classList.remove('hidden');
+
+      document.querySelectorAll('#yuumil-tab-bar button').forEach(b => b.className = "yuumil-tab-btn flex flex-col items-center justify-center text-emerald-200/60 font-medium text-[10px] flex-1 h-full");
+      element.className = "yuumil-tab-btn flex flex-col items-center justify-center text-white font-bold text-[10px] flex-1 h-full bg-emerald-800";
+
+      if(targetViewId === 'yuumil-view-parcela' && yuumilMapInstance) {
+        setTimeout(() => yuumilMapInstance.invalidateSize(), 50);
+      }
+    }
+
+    function renderYuumilDocs() {
+      const container = document.getElementById('yuumil-docs-list'); container.innerHTML = '';
+      const userDocs = GLOBAL_STATE.documentos.filter(d => d.ejidatarioId === CURRENT_SESSION.id);
+
+      if(userDocs.length === 0) {
+        container.innerHTML = `<p class="text-slate-400 italic text-center py-4">No hay archivos vinculados.</p>`;
+        return;
+      }
+
+      userDocs.forEach(d => {
+        let badgeColor = { "Aprobado": "bg-emerald-100 text-emerald-800", "Pendiente": "bg-amber-100 text-amber-800", "Rechazado": "bg-red-100 text-red-800" }[d.estado];
+        container.innerHTML += `
+          <div class="p-3 bg-white rounded-xl border flex items-center justify-between gap-2 shadow-sm">
+            <div>
+              <p class="font-bold text-slate-800 text-[11px] leading-tight">${d.tipo}</p>
+              <p class="text-[9px] text-slate-400 font-mono mt-0.5">${d.archivo}</p>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[9px] font-bold ${badgeColor}">${tr(d.estado)}</span>
+          </div>
+        `;
+      });
+    }
+
+    // EJECUCIÓN CONECTADA: SUBIDA REAL HACIA LA BANDEJA DEL ADMIN
+    function executeSimulatedUpload() {
+      const type = document.getElementById('yuumil-upload-type').value;
+      const btn = document.querySelector('#yuumil-view-documentos button[onclick="executeSimulatedUpload()"]');
+      const view = document.getElementById('yuumil-view-documentos');
+      const originalLabel = btn ? btn.innerText : 'Subir';
+
+      // Animación de carga táctil premium: bloquea la vista de forma elegante
+      if(btn) { btn.disabled = true; btn.innerText = "Cargando..."; btn.classList.add('opacity-70', 'cursor-wait'); }
+      if(view) { view.style.transition = 'opacity .3s ease'; view.style.opacity = '0.55'; view.style.pointerEvents = 'none'; }
+
+      setTimeout(() => {
+        const fakeName = type.toUpperCase().replace(/ /g, "_") + "_" + CURRENT_SESSION.id + ".pdf";
+        const nextId = "D" + String(GLOBAL_STATE.documentos.length + 1).padStart(2, '0');
+        GLOBAL_STATE.documentos.push({
+          id: nextId, ejidatarioId: CURRENT_SESSION.id, tipo: type, archivo: fakeName, estado: "Pendiente"
+        });
+
+        saveStateToStorage();
+        renderYuumilDocs();
+
+        // Restaura la vista
+        if(btn) { btn.disabled = false; btn.innerText = originalLabel; btn.classList.remove('opacity-70', 'cursor-wait'); }
+        if(view) { view.style.opacity = ''; view.style.pointerEvents = ''; }
+
+        displayGlobalAlert("Expediente Enviado", "El archivo fue cargado y enviado en tiempo real a la Bandeja de Validación del Comisariado, en estatus Pendiente.");
+        pushWhatsAppToast(tr('Documento recibido'), `Tu "${type}" entró en estatus Pendiente y está en revisión del Comisariado.`, 'info');
+      }, 1000);
+    }
+
+    function renderYuumilFamily() {
+      const container = document.getElementById('yuumil-family-container'); container.innerHTML = '';
+      const nodes = GLOBAL_STATE.familiares.filter(f => f.ejidatarioId === CURRENT_SESSION.id);
+
+      if(nodes.length === 0) {
+        container.innerHTML = `<p class="text-slate-400 italic text-center py-2">Sin sucesores declarados.</p>`;
+        return;
+      }
+
+      nodes.sort((a, b) => String(a.orden || 9).localeCompare(String(b.orden || 9)));
+      nodes.forEach(f => {
+        container.innerHTML += `
+          <div class="p-2.5 bg-emerald-50/50 border border-emerald-100 rounded-xl flex justify-between items-center gap-2">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="shrink-0 w-7 h-7 rounded-lg bg-gov-grad text-white flex items-center justify-center text-[11px] font-black">${f.orden || '–'}°</span>
+              <div class="min-w-0">
+                <p class="font-bold text-slate-800 text-[11px] truncate">${f.nombre}</p>
+                <p class="text-[9px] font-mono text-slate-400 mt-0.5">${f.curp}</p>
+              </div>
+            </div>
+            <span class="shrink-0 text-[9px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md font-bold">${f.parentesco}</span>
+          </div>
+        `;
+      });
+    }
+
+    // ADICIÓN DE NODOS FAMILIARES SINCRO
+    function executeAddFamilyNode() {
+      const name = document.getElementById('fam-name').value.trim();
+      const kinship = document.getElementById('fam-kinship').value;
+      const curp = document.getElementById('fam-curp').value.toUpperCase();
+      const orden = document.getElementById('fam-orden').value;
+
+      if(!name || curp.length !== 18) {
+        displayGlobalAlert("Validación Fallida", "Ingresa un nombre y CURP válido de 18 caracteres.", true);
+        return;
+      }
+
+      // Blindaje Jurídico Art. 17: prelación estricta, sin empates en el mismo orden
+      const empate = GLOBAL_STATE.familiares.find(f => f.ejidatarioId === CURRENT_SESSION.id && String(f.orden) === String(orden));
+      if(empate) {
+        displayGlobalAlert(
+          "⚖️ Empate de Prelación (Art. 17)",
+          `Ya existe un beneficiario en el ${orden}° Orden (${empate.nombre}). La Ley Agraria exige una prelación estricta y única: asigna un orden distinto para evitar la nulidad de la lista de sucesión.`,
+          true
+        );
+        return;
+      }
+
+      const nextId = "F" + String(GLOBAL_STATE.familiares.length + 1).padStart(2, '0');
+      const newNode = { id: nextId, ejidatarioId: CURRENT_SESSION.id, nombre: name, parentesco: kinship, curp: curp, orden: orden };
+      GLOBAL_STATE.familiares.push(newNode);
+
+      // Sincroniza la cadena del padrón para el censo macro del Admin (tiempo real)
+      const ejidatarioTarget = GLOBAL_STATE.ejidatarios.find(ej => ej.id === CURRENT_SESSION.id);
+      if(ejidatarioTarget) {
+        let currentFamStr = (ejidatarioTarget.familiares && ejidatarioTarget.familiares !== 'Ninguno') ? ejidatarioTarget.familiares + ", " : "";
+        ejidatarioTarget.familiares = currentFamStr + `${name} (${kinship} · ${orden}°)`;
+      }
+
+      saveStateToStorage();
+      renderYuumilFamily();
+
+      document.getElementById('fam-name').value = ''; document.getElementById('fam-curp').value = '';
+      displayGlobalAlert("Sucesión Inscrita", `Beneficiario guardado en el ${orden}° Orden e indexado en el censo del Comisariado.`);
+      pushWhatsAppToast(tr('Sucesión actualizada'), `${name} fue inscrito como ${kinship} en el ${orden}° orden de prelación.`, 'aprobado');
+    }
+
+    function renderYuumilAlerts() {
+      const container = document.getElementById('yuumil-alerts-container'); container.innerHTML = '';
+      GLOBAL_STATE.avisos.forEach(a => {
+        container.innerHTML += `
+          <div class="p-3 bg-slate-50 border-l-4 border-gov-gold rounded-r-xl space-y-1">
+            <h4 class="font-bold text-slate-800 text-[11px]">${tr(a.titulo)}</h4>
+            <p class="text-[10px] text-slate-600 leading-relaxed">${a.cuerpo}</p>
+          </div>
+        `;
+      });
+    }
+
+    function saveStateToStorage() {
+      localStorage.setItem("sige_pro_backoffice_db", JSON.stringify(GLOBAL_STATE));
+    }
+
+
+    // ================================================================= -->
+    // CAPA 1 · NOTIFICACIONES PUSH OMNICANAL (WHATSAPP LIVE)             -->
+    // ================================================================= -->
+    function pushWhatsAppToast(title, message, type = 'info') {
+      const stack = document.getElementById('wa-toast-stack');
+      if(!stack) return;
+      const id = 'wa-' + (++WA_TOAST_SEQ);
+      const accent = { aprobado: '#16a34a', rechazado: '#dc2626', alerta: '#e11d48', info: '#16a34a' }[type] || '#16a34a';
+
+      const toast = document.createElement('div');
+      toast.id = id;
+      toast.className = 'wa-toast bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden';
+      toast.innerHTML = `
+        <div class="flex items-stretch">
+          <div class="flex items-center justify-center w-12 shrink-0" style="background:${accent}">
+            <span class="text-xl">💬</span>
+          </div>
+          <div class="flex-1 p-3 pr-2 min-w-0">
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-[11px] font-black text-slate-800 flex items-center gap-1.5">SIGE Alertas <span class="text-[8px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">WhatsApp</span></p>
+              <button onclick="dismissWhatsAppToast('${id}')" class="text-slate-400 font-bold text-sm leading-none hover:text-slate-700">&times;</button>
+            </div>
+            <p class="text-[11px] font-bold text-slate-700 mt-1 leading-tight">${title}</p>
+            <p class="text-[11px] text-slate-500 leading-snug mt-0.5">${message}</p>
+            <p class="text-[9px] text-slate-400 mt-1">Entregado a la línea del ejidatario · ahora</p>
+          </div>
+        </div>`;
+      stack.appendChild(toast);
+      setTimeout(() => dismissWhatsAppToast(id), 6500);
+    }
+
+    function dismissWhatsAppToast(id) {
+      const toast = document.getElementById(id);
+      if(!toast) return;
+      toast.classList.add('wa-out');
+      setTimeout(() => toast.remove(), 380);
+    }
+
+
+    // ================================================================= -->
+    // CAPA 2 · STREAM AUTÓNOMO AGRITECH (ESP32 DRIFT)                    -->
+    // ================================================================= -->
+    function startDemoIoTStream() {
+      stopDemoIoTStream();
+      applyIoTReading(43, 27.8); // lectura base
+      IOT_STREAM_INTERVAL = setInterval(() => {
+        // Fluctuación natural de hardware
+        const humidity = +(28 + Math.random() * 30).toFixed(0);        // 28% – 58%
+        const temp = +(26 + Math.random() * 9).toFixed(1);             // 26.0°C – 35.0°C
+        applyIoTReading(humidity, temp);
+      }, 4000);
+    }
+
+    function stopDemoIoTStream() {
+      if(IOT_STREAM_INTERVAL) { clearInterval(IOT_STREAM_INTERVAL); IOT_STREAM_INTERVAL = null; }
+    }
+
+    function applyIoTReading(humidity, temp) {
+      const hEl = document.getElementById('yuumil-iot-humidity');
+      const tEl = document.getElementById('yuumil-iot-temp');
+      const card = document.getElementById('yuumil-iot-card');
+      const alertEl = document.getElementById('yuumil-iot-alert');
+      const statusEl = document.getElementById('yuumil-iot-status');
+      if(!hEl || !card) return;
+
+      hEl.innerText = humidity;
+      tEl.innerText = temp.toFixed(1);
+
+      if(humidity < 35) {
+        // Semáforo rojo de alerta hidrológica
+        card.className = "p-4 rounded-2xl border shadow-sm space-y-3 transition-colors duration-500 bg-red-50 border-red-200 text-red-700 animate-pulse";
+        statusEl.className = "text-[9px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full uppercase flex items-center gap-1";
+        statusEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-600"></span> ${tr('Sequía detectada')}`;
+        alertEl.className = "text-[11px] font-bold text-center py-1.5 rounded-lg bg-red-100 text-red-700";
+        alertEl.innerText = "⚠️ " + tr('Alerta hidrológica: humedad crítica en la milpa');
+        alertEl.classList.remove('hidden');
+      } else {
+        card.className = "p-4 rounded-2xl border shadow-sm space-y-3 transition-colors duration-500 bg-white border-slate-200";
+        statusEl.className = "text-[9px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full uppercase flex items-center gap-1";
+        statusEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> ${tr('Sensor ESP32 activo')}`;
+        alertEl.classList.add('hidden');
+      }
+    }
+
+
+    // ================================================================= -->
+    // CAPA 3 · TRADUCTOR DINÁMICO AL MAYA YUCATECO                       -->
+    // ================================================================= -->
+    // Diccionario demostrativo (Maaya T'aan). Acrónimos oficiales (RAN, RENAPO, UTM) se preservan.
+    const MAYA_DICT = {
+      "Dashboard General": "Nojoch Tsolar",
+      "Estado Legal de la Propiedad Social": "Bix yanil le lu'um múuch'kaajo'",
+      "Padrón de Ejidatarios": "U ts'íibil k'aaba' ejidatarios",
+      "✓ Validados ante RENAPO": "✓ Jets'a'an tu táan RENAPO",
+      "Parcelas Cartografiadas": "Lu'umo'ob ts'íibta'an tu mapa",
+      "Polígonos vectoriales en caché": "Polígonos ta'aka'an",
+      "Superficie Certificada": "Lu'um jets'a'an u nojochil",
+      "Proyección UTM Zona 16N": "Proyección UTM Zona 16N",
+      "Rezago por Regularizar": "Bin u toj-óoltal",
+      "⚠️ Requieren título del RAN": "⚠️ K'a'abet u ju'unil RAN",
+      "Bandeja de Entrada: Validación de Carpetas Agrarias": "Kúuchil k'amik ju'uno'ob lu'um",
+      "Bandeja de Denuncias de Campo Conectada": "Kúuchil k'eyajo'ob ich kool",
+      "Superficie Registrada": "Lu'um ts'íibta'an",
+      "Testamento Agrario Vigente ante el RAN": "Testamento lu'um kuxa'an tu táan RAN",
+      "Telemetría de Suelo en Tiempo Real": "Telemetría lu'um helelae'",
+      "Humedad del Suelo": "U ch'uulil le lu'umo'",
+      "Temperatura": "Chokwil",
+      "Cesión de Derechos (Art. 80)": "Síijil páajtalil (Art. 80)",
+      "Ventanilla de Alerta de Despojo": "Kúuchil k'eyaj toka'an lu'um",
+      "Tipificación del Delito": "U jejeláasil le k'aaso'",
+      "Denuncia": "K'eyaj",
+      "Notificaciones del Comisariado": "U t'aano'ob le Comisariado",
+      "Mi Expediente Digitalizado": "In ju'uno'ob ti' computadora",
+      "Línea Sucesoria Familiar": "U cha'anil le láak'tsilo'",
+      // Estatus dinámicos
+      "Aprobado": "Jets'a'an",
+      "Pendiente": "Táan u páa'tal",
+      "Rechazado": "Ma' k'amik",
+      "Inscrito RAN": "Ts'íibta'an RAN",
+      "En Dictamen": "Táan u xak'al",
+      "Sensor ESP32 activo": "Sensor ESP32 meyaj",
+      "Sequía detectada": "Ti'ila'an tikin lu'um",
+      "Alerta hidrológica: humedad crítica en la milpa": "K'eyaj: tikin le koolo'"
+    };
+
+    function tr(text) {
+      return (CURRENT_LANG === 'my' && MAYA_DICT[text]) ? MAYA_DICT[text] : text;
+    }
+
+    function applyMayaTranslationEngine(lang) {
+      CURRENT_LANG = (lang === 'my') ? 'my' : 'es';
+
+      // 1) Etiquetas fijas marcadas con data-i18n
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        el.innerText = (CURRENT_LANG === 'my' && MAYA_DICT[key]) ? MAYA_DICT[key] : key;
+      });
+
+      // 2) Contenido dinámico renderizado (estatus, censos, denuncias, avisos)
+      if(adminMapInstance) {
+        renderAdminDocsTable();
+        renderAdminCensusTable();
+        renderAdminDenuncias();
+      }
+      if(CURRENT_SESSION) {
+        renderYuumilDocs();
+        renderYuumilFamily();
+        renderYuumilAlerts();
+      }
+    }
+
+
+    // ================================================================= -->
+    // CAPA 4 · BANDEJA DE DENUNCIAS DE CAMPO (DESPOJO / INVASIÓN)        -->
+    // ================================================================= -->
+    function renderAdminDenuncias() {
+      const tbody = document.getElementById('admin-denuncias-table-body');
+      const counter = document.getElementById('admin-denuncias-counter');
+      if(!tbody) return;
+      tbody.innerHTML = '';
+      const activas = GLOBAL_STATE.denuncias.filter(d => d.estado !== 'Turnado PA');
+      if(counter) counter.innerText = activas.length;
+
+      if(GLOBAL_STATE.denuncias.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-6 text-center text-slate-400 italic">Sin denuncias activas. Las alertas de despojo aparecerán aquí en tiempo real.</td></tr>`;
+        return;
+      }
+
+      GLOBAL_STATE.denuncias.forEach(d => {
+        const turnado = d.estado === 'Turnado PA';
+        const badge = turnado
+          ? '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-600">Turnado a PA</span>'
+          : '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700 animate-pulse">🔴 Alerta crítica</span>';
+
+        const acciones = turnado
+          ? '<span class="text-[10px] text-slate-400 italic">En proceso ante Procuraduría</span>'
+          : `<button onclick="arbitrarDenuncia('${d.id}', 'turnar')" class="bg-rose-600 text-white font-bold px-2 py-1 rounded text-[10px]">Turnar a Procuraduría</button>
+             <button onclick="arbitrarDenuncia('${d.id}', 'desestimar')" class="bg-slate-200 text-slate-700 font-bold px-2 py-1 rounded text-[10px]">Desestimar</button>`;
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-rose-50/40 transition">
+            <td class="px-4 py-3 font-bold text-slate-800">${d.denunciante}</td>
+            <td class="px-4 py-3 font-medium text-slate-600">${d.tipo}</td>
+            <td class="px-4 py-3 font-mono text-[11px] text-slate-500">${d.coords}</td>
+            <td class="px-4 py-3">${badge}</td>
+            <td class="px-4 py-3 text-right space-x-1">${acciones}</td>
+          </tr>`;
+      });
+    }
+
+    function arbitrarDenuncia(id, accion) {
+      const den = GLOBAL_STATE.denuncias.find(d => d.id === id);
+      if(!den) return;
+      if(accion === 'turnar') {
+        den.estado = 'Turnado PA';
+        saveStateToStorage();
+        renderAdminDenuncias();
+        displayGlobalAlert("Caso Turnado", `La denuncia de ${den.denunciante} fue turnada a la Procuraduría Agraria para arbitraje formal.`);
+        pushWhatsAppToast(tr('Denuncia en proceso'), `Tu alerta de "${den.tipo}" fue turnada a la Procuraduría Agraria. Folio ${den.id}.`, 'info');
+      } else {
+        GLOBAL_STATE.denuncias = GLOBAL_STATE.denuncias.filter(d => d.id !== id);
+        saveStateToStorage();
+        renderAdminDenuncias();
+        displayGlobalAlert("Denuncia Desestimada", "El registro fue archivado sin acción de arbitraje.");
+      }
+    }
+
+    // Envío de denuncia desde la app del ejidatario (Yuumil)
+    function submitDespojoAlert() {
+      const tipo = document.getElementById('report-type').value;
+      const txt = document.getElementById('report-text').value.trim();
+      if(!txt) {
+        displayGlobalAlert("Relato requerido", "Describe brevemente los hechos antes de enviar la denuncia.", true);
+        return;
+      }
+
+      // Coordenadas periciales simuladas a partir de la parcela del ejidatario
+      const parcela = GLOBAL_STATE.parcelas.find(p => p.ejidatarioId === CURRENT_SESSION.id);
+      let coords = "20.9670° N, 89.5920° W";
+      if(parcela && parcela.coords && parcela.coords[0]) {
+        coords = `${parcela.coords[0][0].toFixed(4)}° N, ${Math.abs(parcela.coords[0][1]).toFixed(4)}° W`;
+      }
+
+      const nextId = "DN" + String(GLOBAL_STATE.denuncias.length + 1).padStart(2, '0');
+      GLOBAL_STATE.denuncias.push({
+        id: nextId, ejidatarioId: CURRENT_SESSION.id, denunciante: CURRENT_SESSION.nombre,
+        tipo: tipo, relato: txt, coords: coords, estado: "Activa", fecha: new Date().toLocaleDateString('es-MX')
+      });
+      saveStateToStorage();
+
+      // Semáforo legal de la parcela a alerta crítica roja
+      setYuumilLegalSemaforo(true);
+
+      document.getElementById('report-text').value = '';
+      displayGlobalAlert("Denuncia Enviada", `Coordenadas periciales capturadas (${coords}). El caso fue empujado a la Bandeja de Denuncias del Comisariado.`, true);
+    }
+
+    function setYuumilLegalSemaforo(critical) {
+      const box = document.getElementById('yuumil-legal-semaforo');
+      const dot = document.getElementById('yuumil-legal-dot');
+      const title = document.getElementById('yuumil-legal-title');
+      const sub = document.getElementById('yuumil-legal-sub');
+      if(!box) return;
+      if(critical) {
+        box.className = "flex items-center gap-2.5 p-3 rounded-xl border bg-red-50 border-red-200 animate-pulse";
+        dot.className = "w-3 h-3 rounded-full bg-red-600 shadow-[0_0_0_4px_rgba(220,38,38,0.2)]";
+        title.className = "text-[11px] font-bold text-red-700";
+        title.innerText = "Estatus Legal: Alerta crítica de despojo";
+        sub.className = "text-[10px] text-red-600";
+        sub.innerText = "Denuncia activa turnada al Comisariado y Procuraduría Agraria.";
+      } else {
+        box.className = "flex items-center gap-2.5 p-3 rounded-xl border bg-emerald-50 border-emerald-100";
+        dot.className = "w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.18)]";
+        title.className = "text-[11px] font-bold text-emerald-800";
+        title.innerText = "Estatus Legal: Sin conflictos";
+        sub.className = "text-[10px] text-emerald-600";
+        sub.innerText = "Parcela libre de gravámenes y litigios activos.";
+      }
+    }
+
+
+    // ================================================================= -->
+    // CAPA 5 · CESIÓN DE DERECHOS CON TRABA INTELIGENTE (ART. 80)        -->
+    // ================================================================= -->
+    function executeArt80Cesion() {
+      const buyer = document.getElementById('cesion-buyer').value.trim();
+      const prefOk = document.getElementById('cesion-pref').checked;
+
+      if(!buyer) {
+        displayGlobalAlert("Datos incompletos", "Ingresa el nombre del comprador o cesionario.", true);
+        return;
+      }
+      if(!prefOk) {
+        // Traba inteligente: nulidad absoluta del contrato
+        displayLegalNullityModal();
+        return;
+      }
+
+      displayGlobalAlert("Cesión Validada", `La cesión de derechos a favor de ${buyer} cumple el Derecho de Preferencia (Art. 80) y queda lista para ratificación ante el RAN.`);
+      pushWhatsAppToast(tr('Cesión registrada'), `Tu cesión de derechos a favor de ${buyer} fue registrada respetando el Art. 80.`, 'aprobado');
+      document.getElementById('cesion-buyer').value = '';
+      document.getElementById('cesion-pref').checked = false;
+    }
+
+    function displayLegalNullityModal() {
+      displayGlobalAlert(
+        "⚖️ Nulidad Absoluta del Contrato",
+        "No es posible procesar la cesión. El Art. 80 de la Ley Agraria obliga a respetar 30 días naturales de Derecho de Preferencia a favor del cónyuge e hijos. Omitir esta notificación provoca la NULIDAD ABSOLUTA del contrato de enajenación. Marca la casilla de declaración para continuar.",
+        true
+      );
+    }
+
+
+    // ================================================================= -->
+    // CAPA 6 · REVEAL ON SCROLL + INICIALIZACIÓN GLOBAL                  -->
+    // ================================================================= -->
+    function initRevealObserver() {
+      const els = document.querySelectorAll('.reveal');
+      if(!('IntersectionObserver' in window)) { els.forEach(e => e.classList.add('is-visible')); return; }
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach(en => { if(en.isIntersecting) { en.target.classList.add('is-visible'); obs.unobserve(en.target); } });
+      }, { threshold: 0.12 });
+      els.forEach(e => obs.observe(e));
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Listener del traductor dinámico Maya
+      const langSel = document.getElementById('lang-selector');
+      if(langSel) langSel.addEventListener('change', (e) => applyMayaTranslationEngine(e.target.value));
+      initRevealObserver();
+    });
+  </script>
+</body>
+</html>
